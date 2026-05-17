@@ -1,0 +1,273 @@
+@model PublicMenuView
+@{
+    ViewData["Title"] = Model.RestaurantName;
+    ViewData["HideLogout"] = true;
+    ViewData["BodyClass"] = $"public-menu-page menu-mode-{Model.MenuMode.ToLowerInvariant()}";
+    ViewData["BodyStyle"] = $"--menu-background:{Model.BackgroundColor}; --menu-primary:{Model.PrimaryColor}; --menu-secondary:{Model.SecondaryColor}; --menu-text:{Model.SecondaryColor}; --menu-muted:{Model.MutedColor}; --menu-surface-color:{Model.SurfaceColor}; --menu-surface-strong-color:{Model.SurfaceStrongColor}; --menu-border-color:{Model.BorderColor}; --menu-hero-overlay:{Model.HeroOverlayColor}; --menu-accent-soft:{Model.AccentSoftColor}; --menu-button-text:{Model.ButtonTextColor}";
+    var itemCount = Model.Categories.Sum(category => category.Items.Count);
+}
+
+<section id="public-menu"
+         class="stack public-menu public-menu-shell menu-theme-@Model.MenuTheme.ToLowerInvariant() menu-mode-@Model.MenuMode.ToLowerInvariant()"
+         data-restaurant-id="@Model.RestaurantId"
+         data-order-mode="@(Model.IsDelivery ? "delivery" : "mesa")"
+         data-table-id="@Model.CurrentTableId"
+         data-invalid-table="@(Model.HasInvalidTable ? "true" : "false")"
+         style="--menu-primary:@Model.PrimaryColor; --menu-secondary:@Model.SecondaryColor; --menu-text:@Model.SecondaryColor; --menu-muted:@Model.MutedColor; --menu-background:@Model.BackgroundColor; --menu-surface-color:@Model.SurfaceColor; --menu-surface-strong-color:@Model.SurfaceStrongColor; --menu-border-color:@Model.BorderColor; --menu-hero-overlay:@Model.HeroOverlayColor; --menu-accent-soft:@Model.AccentSoftColor; --menu-button-text:@Model.ButtonTextColor">
+    <header class="public-menu-hero">
+        @if (!string.IsNullOrWhiteSpace(Model.CoverImageUrl))
+        {
+            <img class="public-menu-hero-media" src="@Model.CoverImageUrl" alt="Imagem de capa de @Model.RestaurantName" />
+        }
+        <div class="public-menu-hero-content">
+            <p class="eyebrow">Cardápio digital</p>
+            <h1>@Model.RestaurantName</h1>
+            @if (!string.IsNullOrWhiteSpace(Model.PublicDescription))
+            {
+                <p>@Model.PublicDescription</p>
+            }
+            <div class="public-hero-meta" aria-label="Resumo do cardápio">
+                <span>@Model.Categories.Count categoria(s)</span>
+                <span>@itemCount item(ns)</span>
+                <span>@(Model.IsDelivery ? "Pedido delivery" : $"Pedido da mesa {Model.CurrentTableNumber}")</span>
+            </div>
+        </div>
+    </header>
+
+    <section class="public-table-card" aria-labelledby="table-title">
+        <div>
+            <p class="eyebrow">Tipo de pedido</p>
+            @if (Model.HasInvalidTable)
+            {
+                <h2 id="table-title">Mesa nao encontrada</h2>
+                <p>Use o QR Code correto da mesa ou abra o cardapio sem mesa para delivery.</p>
+            }
+            else if (Model.IsDelivery)
+            {
+                <h2 id="table-title">Delivery</h2>
+                <p>Informe seus dados de entrega na sacola antes de enviar o pedido.</p>
+            }
+            else
+            {
+                <h2 id="table-title">Mesa @Model.CurrentTableNumber</h2>
+                <p>Seu pedido sera enviado diretamente para esta mesa.</p>
+            }
+        </div>
+        <div class="public-table-control">
+            <div id="public-feedback" class="feedback"></div>
+        </div>
+    </section>
+
+    @if (Model.PromotionalItems.Count > 0 || Model.Categories.Count > 1)
+    {
+        <nav class="category-nav" aria-label="Categorias do cardápio">
+            @if (Model.PromotionalItems.Count > 0)
+            {
+                <a href="#promocoes-do-dia">Promo&ccedil;&otilde;es do Dia</a>
+            }
+            @foreach (var category in Model.Categories)
+            {
+                <a href="#category-@category.Id">@category.Name</a>
+            }
+        </nav>
+    }
+
+    <div class="grid menu-layout public-menu-layout">
+        <div class="stack public-menu-content">
+            @if (Model.PromotionalItems.Count > 0)
+            {
+                <section id="promocoes-do-dia" class="public-category public-promotions" aria-labelledby="promotions-title">
+                    <div class="public-category-header">
+                        <div>
+                            <p class="eyebrow">Destaques</p>
+                            <h2 id="promotions-title">Promo&ccedil;&otilde;es do Dia</h2>
+                        </div>
+                        <span>@Model.PromotionalItems.Count item(ns)</span>
+                    </div>
+
+                    <div class="public-menu-grid public-promotions-grid">
+                        @foreach (var item in Model.PromotionalItems)
+                        {
+                            <article class="menu-item public-menu-item public-promotion-item">
+                                <div class="public-menu-item-media">
+                                    @if (!string.IsNullOrWhiteSpace(item.ImageUrl))
+                                    {
+                                        <img src="@item.ImageUrl" alt="@item.Name" />
+                                    }
+                                    else
+                                    {
+                                        <span>@(item.Name.Length > 0 ? item.Name[..1] : "?")</span>
+                                    }
+                                </div>
+                                <div class="public-menu-item-copy">
+                                    <div class="menu-item-title-row">
+                                        <strong>@item.Name</strong>
+                                        <em class="promotion-badge">Promo&ccedil;&atilde;o</em>
+                                    </div>
+                                    <p>@item.Description</p>
+                                    @if (!string.IsNullOrWhiteSpace(item.PromotionPeriodLabel))
+                                    {
+                                        <small class="promotion-meta">@item.PromotionPeriodLabel</small>
+                                    }
+                                    <span>@item.PriceLabel</span>
+                                </div>
+                                <button class="button primary add-cart"
+                                        type="button"
+                                        data-item-id="@item.Id"
+                                        data-name="@item.Name"
+                                        data-price-cents="@item.PriceCents">
+                                    Adicionar
+                                </button>
+                            </article>
+                        }
+                    </div>
+                </section>
+            }
+
+            @foreach (var category in Model.Categories)
+            {
+                <section id="category-@category.Id" class="public-category">
+                    <div class="public-category-header">
+                        <div>
+                            <p class="eyebrow">Categoria</p>
+                            <h2>@category.Name</h2>
+                        </div>
+                        <span>@category.Items.Count item(ns)</span>
+                    </div>
+
+                    <div class="public-menu-grid">
+                        @foreach (var item in category.Items)
+                        {
+                            <article class="menu-item public-menu-item">
+                                <div class="public-menu-item-media">
+                                    @if (!string.IsNullOrWhiteSpace(item.ImageUrl))
+                                    {
+                                        <img src="@item.ImageUrl" alt="@item.Name" />
+                                    }
+                                    else
+                                    {
+                                        <span>@(item.Name.Length > 0 ? item.Name[..1] : "?")</span>
+                                    }
+                                </div>
+                                <div class="public-menu-item-copy">
+                                    <div class="menu-item-title-row">
+                                        <strong>@item.Name</strong>
+                                        @if (item.IsPromotionActive)
+                                        {
+                                            <em class="promotion-badge">Promo&ccedil;&atilde;o</em>
+                                        }
+                                    </div>
+                                    <p>@item.Description</p>
+                                    @if (item.IsPromotionActive && !string.IsNullOrWhiteSpace(item.PromotionPeriodLabel))
+                                    {
+                                        <small class="promotion-meta">@item.PromotionPeriodLabel</small>
+                                    }
+                                    <span>@item.PriceLabel</span>
+                                </div>
+                                <button class="button primary add-cart"
+                                        type="button"
+                                        data-item-id="@item.Id"
+                                        data-name="@item.Name"
+                                        data-price-cents="@item.PriceCents">
+                                    Adicionar
+                                </button>
+                            </article>
+                        }
+                    </div>
+                </section>
+            }
+        </div>
+
+        <aside class="panel cart-panel public-cart" aria-label="Sacola do pedido">
+            <div class="public-cart-header">
+                <div>
+                    <p class="eyebrow">Sacola</p>
+                    <h2>Seu pedido</h2>
+                </div>
+                <span id="cart-count" class="cart-count">0 itens</span>
+            </div>
+            <div id="cart-lines" class="cart-lines"></div>
+            @if (Model.IsDelivery)
+            {
+                <div class="delivery-fields">
+                    <label for="delivery-name">Nome
+                        <input id="delivery-name" type="text" maxlength="120" autocomplete="name" />
+                    </label>
+                    <label for="delivery-phone">Telefone
+                        <input id="delivery-phone" type="tel" maxlength="32" autocomplete="tel" />
+                    </label>
+                    <label for="delivery-address">Endereco de entrega
+                        <textarea id="delivery-address" maxlength="500" rows="3" autocomplete="street-address"></textarea>
+                    </label>
+                </div>
+            }
+            <div class="coupon-box">
+                <label for="coupon-code">Cupom de desconto</label>
+                <div class="coupon-input-row">
+                    <input id="coupon-code" type="text" maxlength="40" placeholder="Digite seu cupom" autocomplete="off" />
+                    <button id="apply-coupon" class="button" type="button">Aplicar</button>
+                    <button id="remove-coupon" class="button" type="button" hidden>Remover</button>
+                </div>
+                <p id="coupon-feedback" class="coupon-feedback" aria-live="polite"></p>
+            </div>
+            <div class="cart-total-row cart-subtotal-row">
+                <span>Subtotal</span>
+                <strong id="cart-subtotal">R$ 0,00</strong>
+            </div>
+            <div id="cart-discount-row" class="cart-total-row cart-discount-row" hidden>
+                <span id="cart-discount-label">Desconto</span>
+                <strong id="cart-discount">-R$ 0,00</strong>
+            </div>
+            <div class="cart-total-row">
+                <span>Total</span>
+                <strong id="cart-total">R$ 0,00</strong>
+            </div>
+            <div class="actions vertical">
+                <button id="submit-order" class="button primary" type="button">Enviar pedido</button>
+                @if (!Model.IsDelivery && !Model.HasInvalidTable)
+                {
+                <button class="button service-request" type="button" data-request-type="CHAMAR_GARCOM">Chamar garçom</button>
+                <button class="button service-request" type="button" data-request-type="PEDIR_CONTA">Pedir conta</button>
+                }
+            </div>
+            <p class="cart-note">@(Model.IsDelivery ? "Confira seus dados de entrega antes de enviar." : "Confira a mesa antes de enviar. O garcom acompanha tudo em tempo real.")</p>
+            <div id="order-feedback-panel" class="order-feedback-panel" hidden>
+                <div>
+                    <p class="eyebrow">Feedback</p>
+                    <h3>Avalie seu pedido</h3>
+                </div>
+                <form id="order-feedback-form" class="form-stack">
+                    <input type="hidden" name="orderId" />
+                    <fieldset class="rating-field">
+                        <legend>Nota</legend>
+                        <label>
+                            <input type="radio" name="rating" value="5" required />
+                            <span>5 estrelas</span>
+                        </label>
+                        <label>
+                            <input type="radio" name="rating" value="4" required />
+                            <span>4 estrelas</span>
+                        </label>
+                        <label>
+                            <input type="radio" name="rating" value="3" required />
+                            <span>3 estrelas</span>
+                        </label>
+                        <label>
+                            <input type="radio" name="rating" value="2" required />
+                            <span>2 estrelas</span>
+                        </label>
+                        <label>
+                            <input type="radio" name="rating" value="1" required />
+                            <span>1 estrela</span>
+                        </label>
+                    </fieldset>
+                    <label>
+                        Coment&aacute;rio
+                        <textarea name="comment" maxlength="600" rows="3" placeholder="Conte como foi sua experi&ecirc;ncia"></textarea>
+                    </label>
+                    <button class="button primary" type="submit">Enviar feedback</button>
+                </form>
+            </div>
+        </aside>
+    </div>
+</section>

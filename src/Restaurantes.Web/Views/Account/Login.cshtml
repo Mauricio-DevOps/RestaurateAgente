@@ -1,0 +1,31 @@
+@model LoginInput
+@{
+    ViewData["Title"] = "Login";
+}
+
+<section class="narrow">
+    <div class="panel">
+        <h1>Entrar</h1>
+        <p class="muted">Use um usuário interno para acessar sua área operacional.</p>
+
+        <form method="post" action="/login" class="form-stack">
+            @Html.AntiForgeryToken()
+            <input type="hidden" asp-for="Next" />
+            <div asp-validation-summary="ModelOnly" class="validation"></div>
+
+            <label>
+                Email
+                <input asp-for="Email" autocomplete="username" />
+                <span asp-validation-for="Email"></span>
+            </label>
+
+            <label>
+                Senha
+                <input asp-for="Password" type="password" autocomplete="current-password" />
+                <span asp-validation-for="Password"></span>
+            </label>
+
+            <button type="submit" class="button primary">Entrar</button>
+        </form>
+    </div>
+</section>

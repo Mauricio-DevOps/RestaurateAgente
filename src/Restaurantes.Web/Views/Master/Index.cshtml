@@ -1,0 +1,109 @@
+@using Restaurantes.Web.Auth
+@model MasterDashboardView
+@{
+    ViewData["Title"] = "Master";
+}
+
+<section class="stack">
+    <div class="section-header">
+        <div>
+            <p class="eyebrow">Area master</p>
+            <h1>Restaurantes e administradores</h1>
+        </div>
+    </div>
+
+    <div class="grid two">
+        <div class="panel">
+            <h2>Criar restaurante</h2>
+            <form method="post" action="/master/admins" class="form-stack">
+                @Html.AntiForgeryToken()
+                <div asp-validation-summary="All" class="validation"></div>
+                <label>Restaurante <input name="RestaurantName" value="@Model.CreateInput.RestaurantName" required /></label>
+                <label>Administrador <input name="AdminName" value="@Model.CreateInput.AdminName" required /></label>
+                <label>Email <input name="Email" type="email" value="@Model.CreateInput.Email" required /></label>
+                <label>Senha <input name="Password" type="password" required minlength="8" /></label>
+                <label>
+                    Acesso
+                    <select name="AccessMode">
+                        @foreach (var mode in Enum.GetValues<RestaurantAccessMode>())
+                        {
+                            if (mode == Model.CreateInput.AccessMode)
+                            {
+                                <option value="@mode" selected>@RestaurantPortalAccess.ToDisplayLabel(mode)</option>
+                            }
+                            else
+                            {
+                                <option value="@mode">@RestaurantPortalAccess.ToDisplayLabel(mode)</option>
+                            }
+                        }
+                    </select>
+                </label>
+                <button class="button primary" type="submit">Criar</button>
+            </form>
+        </div>
+
+        <div class="panel">
+            <h2>Resumo</h2>
+            <p class="metric">@Model.Admins.Count restaurante(s)</p>
+            <p class="muted">Cada restaurante tem seu proprio acesso, cardapio, mesas e operacao. Se um restaurante ficar sem admin, ele continua aparecendo aqui para correcao ou exclusao.</p>
+        </div>
+    </div>
+
+    <div class="panel">
+        <h2>Restaurantes</h2>
+        <div class="table-list">
+            @foreach (var admin in Model.Admins)
+            {
+                <article class="row-card">
+                    <div>
+                        <strong>@admin.RestaurantName</strong>
+                        @if (admin.HasAdmin)
+                        {
+                            <p>@admin.AdminName · @admin.Email · @admin.Status · @admin.AccessModeLabel</p>
+                        }
+                        else
+                        {
+                            <p>@admin.AdminName · @admin.Status · @admin.AccessModeLabel</p>
+                        }
+                    </div>
+                    <div class="row-actions">
+                        <form method="post" action="/master/restaurants/@admin.RestaurantId/access-mode" class="inline-form">
+                            @Html.AntiForgeryToken()
+                            <select name="AccessMode">
+                                @foreach (var mode in Enum.GetValues<RestaurantAccessMode>())
+                                {
+                                    if (mode == admin.AccessMode)
+                                    {
+                                        <option value="@mode" selected>@RestaurantPortalAccess.ToDisplayLabel(mode)</option>
+                                    }
+                                    else
+                                    {
+                                        <option value="@mode">@RestaurantPortalAccess.ToDisplayLabel(mode)</option>
+                                    }
+                                }
+                            </select>
+                            <button class="button" type="submit">Acesso</button>
+                        </form>
+                        @if (admin.HasAdmin && !string.IsNullOrWhiteSpace(admin.UserId))
+                        {
+                            <form method="post" action="/master/admins/@admin.UserId/toggle">
+                                @Html.AntiForgeryToken()
+                                <button class="button" type="submit">Ativar/Inativar</button>
+                            </form>
+                            <form method="post" action="/master/admins/@admin.UserId/password" class="inline-form">
+                                @Html.AntiForgeryToken()
+                                <input name="password" type="password" placeholder="Nova senha" required minlength="8" />
+                                <button class="button" type="submit">Senha</button>
+                            </form>
+                        }
+                        <form method="post" action="/master/restaurants/@admin.RestaurantId/delete">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="restaurantId" value="@admin.RestaurantId" />
+                            <button class="button danger" type="submit">Excluir</button>
+                        </form>
+                    </div>
+                </article>
+            }
+        </div>
+    </div>
+</section>

@@ -1,0 +1,356 @@
+@model RestaurantMenuEditorView
+@{
+    ViewData["Title"] = "Cardapio";
+}
+
+<section class="stack">
+    <div class="section-header">
+        <div>
+            <p class="eyebrow">Cardapio</p>
+            <h1>@Model.RestaurantName</h1>
+        </div>
+        <a class="button" href="/cardapio/@Model.RestaurantId">Previa publica</a>
+    </div>
+
+    <div id="menu-qr-generator"
+         class="panel qr-panel"
+         data-public-menu-path="/cardapio/@Model.RestaurantId"
+         data-qr-url="/restaurante/cardapio/qrcode">
+        <div class="section-header compact">
+            <div>
+                <h2>QR Code do cardapio</h2>
+                <p class="muted">Gere um QR Code para uma mesa ou para delivery.</p>
+            </div>
+        </div>
+        <div class="form-grid qr-form">
+            <label>
+                Tipo
+                <select id="menu-qr-table">
+                    <option value="">Delivery</option>
+                    @foreach (var table in Model.Tables)
+                    {
+                        <option value="@table.TableNumber">Mesa @table.TableNumber</option>
+                    }
+                </select>
+            </label>
+            <label>
+                Link
+                <input id="menu-qr-link" readonly />
+            </label>
+            <div class="actions qr-actions">
+                <button id="menu-qr-generate" class="button primary" type="button">Gerar QR Code</button>
+                <a id="menu-qr-download" class="button" href="#" download="cardapio-delivery.svg" hidden>Baixar QR Code</a>
+            </div>
+        </div>
+        <div id="menu-qr-preview" class="qr-preview" hidden>
+            <img id="menu-qr-image" alt="QR Code do cardapio" />
+        </div>
+    </div>
+
+    <div class="panel">
+        <h2>Marca publica</h2>
+        <form method="post" action="/restaurante/cardapio/marca" enctype="multipart/form-data" class="form-grid">
+            @Html.AntiForgeryToken()
+            <label>Nome <input name="restaurantName" value="@Model.RestaurantName" required /></label>
+            <label>Descricao <input name="publicDescription" value="@Model.PublicDescription" maxlength="280" /></label>
+            <label class="color-field">
+                Cor da marca
+                <span class="color-picker-row">
+                    <input class="color-hex" name="primaryColor" value="@Model.PrimaryColor" maxlength="7" pattern="#[0-9a-fA-F]{6}" />
+                    <input class="color-picker" type="color" value="@Model.PrimaryColor" aria-label="Escolher cor da marca" />
+                </span>
+            </label>
+            <fieldset class="theme-field">
+                <legend>Modo</legend>
+                <span class="segmented-control">
+                    <label>
+                        <input type="radio" name="menuMode" value="CLARO" checked="@(Model.MenuMode == "CLARO" ? "checked" : null)" />
+                        <span>Claro</span>
+                    </label>
+                    <label>
+                        <input type="radio" name="menuMode" value="ESCURO" checked="@(Model.MenuMode == "ESCURO" ? "checked" : null)" />
+                        <span>Escuro</span>
+                    </label>
+                </span>
+            </fieldset>
+            <fieldset class="theme-field theme-field-wide">
+                <legend>Tema visual</legend>
+                <div class="theme-options">
+                    <label class="theme-option">
+                        <input type="radio" name="menuTheme" value="ELEGANTE" checked="@(Model.MenuTheme == "ELEGANTE" ? "checked" : null)" />
+                        <span>Elegante</span>
+                    </label>
+                    <label class="theme-option">
+                        <input type="radio" name="menuTheme" value="ACAI" checked="@(Model.MenuTheme == "ACAI" ? "checked" : null)" />
+                        <span>Acai</span>
+                    </label>
+                    <label class="theme-option">
+                        <input type="radio" name="menuTheme" value="CLASSICO" checked="@(Model.MenuTheme == "CLASSICO" ? "checked" : null)" />
+                        <span>Classico</span>
+                    </label>
+                    <label class="theme-option">
+                        <input type="radio" name="menuTheme" value="MINIMALISTA" checked="@(Model.MenuTheme == "MINIMALISTA" ? "checked" : null)" />
+                        <span>Minimalista</span>
+                    </label>
+                    <label class="theme-option">
+                        <input type="radio" name="menuTheme" value="PREMIUM" checked="@(Model.MenuTheme == "PREMIUM" ? "checked" : null)" />
+                        <span>Premium</span>
+                    </label>
+                </div>
+            </fieldset>
+            <div class="palette-preview theme-field-wide" style="--preview-primary:@Model.PrimaryColor; --preview-text:@Model.SecondaryColor; --preview-bg:@Model.BackgroundColor">
+                <span style="background: var(--preview-primary)"></span>
+                <span style="background: var(--preview-bg)"></span>
+                <span style="background: var(--preview-text)"></span>
+            </div>
+            <label>Imagem de capa <input name="coverImage" type="file" accept="image/png,image/jpeg,image/webp" /></label>
+            <button class="button primary" type="submit">Salvar marca</button>
+        </form>
+    </div>
+
+    <div class="panel">
+        <h2>Nova categoria</h2>
+        <form method="post" action="/restaurante/cardapio/categorias" class="inline-form">
+            @Html.AntiForgeryToken()
+            <input name="name" placeholder="Nome da categoria" required />
+            <button class="button primary" type="submit">Adicionar</button>
+        </form>
+    </div>
+
+    <div id="discount-coupons" class="panel">
+        <div class="section-header compact">
+            <div>
+                <h2>Cupons de desconto</h2>
+                <p class="muted">Cadastre codigos para clientes aplicarem no carrinho do cardapio.</p>
+            </div>
+        </div>
+
+        <form method="post" action="/restaurante/cardapio/cupons" class="form-grid coupon-form">
+            @Html.AntiForgeryToken()
+            <label>Codigo <input name="Code" placeholder="SABADOU" required minlength="3" maxlength="40" /></label>
+            <label>
+                Tipo
+                <select name="Type">
+                    <option value="PERCENTUAL">Percentual</option>
+                    <option value="VALOR_FIXO">Valor fixo</option>
+                </select>
+            </label>
+            <label>Desconto <input name="ValueInput" placeholder="10 ou 15,00" required maxlength="32" /></label>
+            <button class="button primary" type="submit">Adicionar cupom</button>
+        </form>
+
+        <div class="table-list coupon-list">
+            @if (Model.Coupons.Count == 0)
+            {
+                <p class="muted">Nenhum cupom cadastrado.</p>
+            }
+            @foreach (var coupon in Model.Coupons)
+            {
+                <article class="row-card coupon-card">
+                    <div>
+                        <strong>@coupon.Code</strong>
+                        <p>@coupon.TypeLabel - @coupon.ValueLabel - @StatusLabel(coupon.Status)</p>
+                        <p>@coupon.UsageCount uso(s) - @coupon.TotalDiscountLabel descontados - ultimo uso: @coupon.LastUsedAtLabel</p>
+                    </div>
+                    <form method="post" action="/restaurante/cardapio/cupons/@coupon.Id" class="form-grid coupon-edit-form">
+                        @Html.AntiForgeryToken()
+                        <label>Codigo <input name="Code" value="@coupon.Code" required minlength="3" maxlength="40" /></label>
+                        <label>
+                            Tipo
+                            <select name="Type">
+                                <option value="PERCENTUAL" selected="@(coupon.Type == DiscountCouponType.PERCENTUAL)">Percentual</option>
+                                <option value="VALOR_FIXO" selected="@(coupon.Type == DiscountCouponType.VALOR_FIXO)">Valor fixo</option>
+                            </select>
+                        </label>
+                        <label>Desconto <input name="ValueInput" value="@coupon.ValueInput" required maxlength="32" /></label>
+                        <button class="button primary" type="submit">Salvar cupom</button>
+                    </form>
+                    <form method="post" action="/restaurante/cardapio/cupons/@coupon.Id/toggle">
+                        @Html.AntiForgeryToken()
+                        <button class="button" type="submit">@(coupon.Status == EntityStatus.ACTIVE ? "Inativar" : "Ativar")</button>
+                    </form>
+                </article>
+            }
+        </div>
+    </div>
+
+    @foreach (var category in Model.Categories)
+    {
+        <div class="panel">
+            <div class="section-header compact">
+                <h2>@category.Name <small>@category.Status</small></h2>
+                <form method="post" action="/restaurante/cardapio/categorias/@category.Id/toggle">
+                    @Html.AntiForgeryToken()
+                    <button class="button" type="submit">Ativar/Inativar</button>
+                </form>
+            </div>
+
+            <form method="post" action="/restaurante/cardapio/itens" enctype="multipart/form-data" class="form-grid">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="categoryId" value="@category.Id" />
+                <label>Item <input name="name" required /></label>
+                <label>Descricao <input name="description" required /></label>
+                <label>Preco <input name="priceInput" placeholder="35,90" required /></label>
+                <label>Imagem <input name="image" type="file" accept="image/png,image/jpeg,image/webp" /></label>
+                <label>
+                    <input name="syncToWhatsApp" type="checkbox" value="true" />
+                    Migrar para produtos WhatsApp
+                </label>
+                <fieldset class="promotion-fields theme-field theme-field-wide">
+                    <legend>Promo&ccedil;&atilde;o</legend>
+                    <label class="promotion-toggle-label">
+                        <input class="promotion-toggle" name="IsPromotion" type="checkbox" value="true" />
+                        Produto promocional
+                    </label>
+                    <label>Dura&ccedil;&atilde;o
+                        <select class="promotion-duration" name="PromotionDuration">
+                            <option value="TODAY" selected>Somente hoje</option>
+                            <option value="WEEKEND">Fim de semana</option>
+                            <option value="CUSTOM">Per&iacute;odo customizado</option>
+                        </select>
+                    </label>
+                    <div class="promotion-custom-range grid two" hidden>
+                        <label>Inicio <input name="PromotionStartsOn" type="date" /></label>
+                        <label>Fim <input name="PromotionEndsOn" type="date" /></label>
+                    </div>
+                </fieldset>
+                <button class="button primary" type="submit">Adicionar item</button>
+            </form>
+
+            <div class="table-list">
+                @foreach (var item in category.Items)
+                {
+                    <article class="row-card">
+                        <div>
+                            <strong>@item.Name</strong>
+                            <p>@item.Description</p>
+                            <p>@item.PriceLabel - @StatusLabel(item.Status)</p>
+                            @if (item.IsPromotion)
+                            {
+                                <p class="promotion-summary">
+                                    <span class="promotion-badge">Promocional</span>
+                                    @PromotionStateLabel(item)
+                                    @if (!string.IsNullOrWhiteSpace(item.PromotionPeriodLabel))
+                                    {
+                                        <span>@item.PromotionPeriodLabel</span>
+                                    }
+                                </p>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(item.WhatsAppProductId))
+                            {
+                                <p>Sincronizado com Produtos WhatsApp</p>
+                            }
+                        </div>
+                        <form method="post" action="/restaurante/cardapio/itens/@item.Id" enctype="multipart/form-data" class="form-grid">
+                            @Html.AntiForgeryToken()
+                            <label>Item <input name="name" value="@item.Name" required /></label>
+                            <label>Descricao <input name="description" value="@item.Description" required /></label>
+                            <label>Preco <input name="priceInput" value="@DecimalValue(item.PriceCents)" required /></label>
+                            <label>Imagem <input name="image" type="file" accept="image/png,image/jpeg,image/webp" /></label>
+                            <label>
+                                <input name="syncToWhatsApp" type="checkbox" value="true" />
+                                Migrar para produtos WhatsApp
+                            </label>
+                            <fieldset class="promotion-fields theme-field theme-field-wide">
+                                <legend>Promo&ccedil;&atilde;o</legend>
+                                <label class="promotion-toggle-label">
+                                    <input class="promotion-toggle" name="IsPromotion" type="checkbox" value="true" checked="@item.IsPromotion" />
+                                    Produto promocional
+                                </label>
+                                <label>Dura&ccedil;&atilde;o
+                                    <select class="promotion-duration" name="PromotionDuration">
+                                        <option value="TODAY" selected="@(PromotionDurationValue(item) == "TODAY")">Somente hoje</option>
+                                        <option value="WEEKEND" selected="@(PromotionDurationValue(item) == "WEEKEND")">Fim de semana</option>
+                                        <option value="CUSTOM" selected="@(PromotionDurationValue(item) == "CUSTOM")">Per&iacute;odo customizado</option>
+                                    </select>
+                                </label>
+                                <div class="promotion-custom-range grid two" hidden="@(PromotionDurationValue(item) != "CUSTOM")">
+                                    <label>Inicio <input name="PromotionStartsOn" type="date" value="@PromotionStartDateValue(item)" /></label>
+                                    <label>Fim <input name="PromotionEndsOn" type="date" value="@PromotionEndDateValue(item)" /></label>
+                                </div>
+                            </fieldset>
+                            <button class="button primary" type="submit">Salvar item</button>
+                        </form>
+                        <div class="row-actions">
+                            <form method="post" action="/restaurante/cardapio/itens/@item.Id/toggle">
+                                @Html.AntiForgeryToken()
+                                <button class="button" type="submit">@(item.Status == EntityStatus.ACTIVE ? "Tirar do ar" : "Publicar")</button>
+                            </form>
+                            <form method="post" action="/restaurante/cardapio/itens/@item.Id/delete">
+                                @Html.AntiForgeryToken()
+                                <button class="button danger" type="submit">Excluir</button>
+                            </form>
+                        </div>
+                    </article>
+                }
+            </div>
+        </div>
+    }
+</section>
+
+@functions {
+    private static string DecimalValue(int cents)
+    {
+        return (cents / 100m).ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+    }
+
+    private static string StatusLabel(EntityStatus status)
+    {
+        return status == EntityStatus.ACTIVE ? "Publicado" : "Rascunho";
+    }
+
+    private static string PromotionStateLabel(MenuItemView item)
+    {
+        if (item.IsPromotionActive)
+        {
+            return "Ativa";
+        }
+
+        if (item.PromotionStartsAt.HasValue && item.PromotionStartsAt.Value > DateTimeOffset.Now)
+        {
+            return "Agendada";
+        }
+
+        return "Fora do periodo";
+    }
+
+    private static string PromotionDurationValue(MenuItemView item)
+    {
+        if (!item.IsPromotion || !item.PromotionStartsAt.HasValue || !item.PromotionEndsAt.HasValue)
+        {
+            return "TODAY";
+        }
+
+        var start = DateOnly.FromDateTime(item.PromotionStartsAt.Value.LocalDateTime);
+        var endExclusive = DateOnly.FromDateTime(item.PromotionEndsAt.Value.LocalDateTime);
+        var today = DateOnly.FromDateTime(DateTime.Now);
+
+        if (start == today && endExclusive == today.AddDays(1))
+        {
+            return "TODAY";
+        }
+
+        if (start.DayOfWeek == DayOfWeek.Saturday && endExclusive == start.AddDays(2))
+        {
+            return "WEEKEND";
+        }
+
+        return "CUSTOM";
+    }
+
+    private static string PromotionStartDateValue(MenuItemView item)
+    {
+        return item.PromotionStartsAt?.LocalDateTime.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture) ?? "";
+    }
+
+    private static string PromotionEndDateValue(MenuItemView item)
+    {
+        if (!item.PromotionEndsAt.HasValue)
+        {
+            return "";
+        }
+
+        var endInclusive = DateOnly.FromDateTime(item.PromotionEndsAt.Value.LocalDateTime).AddDays(-1);
+        return endInclusive.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
+    }
+}

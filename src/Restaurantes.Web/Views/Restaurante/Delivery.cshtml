@@ -1,0 +1,20 @@
+@model RestaurantDeliveryDashboardView
+@{
+    ViewData["Title"] = "Delivery";
+}
+
+<section class="stack">
+    <div class="section-header">
+        <div>
+            <p class="eyebrow">Delivery</p>
+            <h1>@Model.RestaurantName</h1>
+        </div>
+    </div>
+
+    <div id="delivery-orders"
+         class="panel"
+         data-refresh-url="/api/restaurante/delivery/orders"
+         data-status-url="/api/restaurante/delivery/orders/status">
+        <p class="muted">Carregando pedidos delivery...</p>
+    </div>
+</section>

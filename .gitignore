@@ -1,0 +1,42 @@
+node_modules
+.next
+out
+dist
+bin
+obj
+coverage
+.env
+.env.local
+.env.supabase.local
+.env.development.local
+.env.test.local
+.env.production.local
+!.env.example
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Local tool/runtime output
+.codex-*.log
+dev.*.log
+tsconfig.tsbuildinfo
+*.log
+*.lscache
+
+# Supabase local CLI state
+supabase/.branches
+supabase/.temp
+
+# .NET local runtime output
+app.db
+app.db-*
+app.db*
+*.db
+*.db-*
+*.user
+*.suo
+src/Restaurantes.Web/wwwroot/uploads/
+src/Restaurantes.Web/App_Data/Keys/
+src/Restaurantes.Web/Properties/ServiceDependencies/
+src/Restaurantes.Web/Properties/PublishProfiles/*.pubxml.user

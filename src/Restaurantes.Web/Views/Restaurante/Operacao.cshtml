@@ -1,0 +1,217 @@
+@model RestaurantOperationsView
+@{
+    ViewData["Title"] = "Operacao";
+    var showWhatsAppMissingModal = Model.CanManageWhatsApp && string.Equals(Context.Request.Query["whatsappMissing"], "1", StringComparison.Ordinal);
+}
+
+@if (showWhatsAppMissingModal)
+{
+    <div class="modal-backdrop-lite" role="dialog" aria-modal="true" aria-labelledby="whatsapp-missing-title">
+        <div class="modal-panel-lite">
+            <h2 id="whatsapp-missing-title">WhatsApp nao vinculado</h2>
+            <p>Voce ainda nao tem um telefone de WhatsApp vinculado. Va na tela Operacoes e cadastre o telefone do restaurante.</p>
+            <div class="actions">
+                <a class="button primary" href="#whatsapp-contact">Cadastrar telefone</a>
+                <a class="button" href="/restaurante/operacao">Fechar</a>
+            </div>
+        </div>
+    </div>
+}
+
+<section class="stack">
+    <div class="section-header">
+        <div>
+            <p class="eyebrow">Operacao</p>
+            <h1>@Model.RestaurantName</h1>
+        </div>
+    </div>
+
+    @if (Model.CanManageWhatsApp)
+    {
+        <div id="whatsapp-contact" class="panel">
+            <div class="section-header compact">
+                <div>
+                    <h2>WhatsApp do restaurante</h2>
+                    <p class="muted">
+                        Use o telefone de delivery para acessar as telas do Atendente WhatsApp sem pedir login novamente.
+                    </p>
+                </div>
+                @if (!string.IsNullOrWhiteSpace(Model.WhatsAppPhone))
+                {
+                    <span class="status-pill">Vinculado</span>
+                }
+            </div>
+            <form method="post" action="/restaurante/operacao/whatsapp" class="form-grid">
+                @Html.AntiForgeryToken()
+                <label>
+                    Telefone de WhatsApp
+                    <input name="Phone" value="@Model.WhatsAppPhone" placeholder="(11) 99999-9999" required maxlength="32" />
+                </label>
+                <button class="button primary" type="submit">Salvar WhatsApp</button>
+            </form>
+        </div>
+    }
+
+    @if (Model.CanManageRestaurantOperations)
+    {
+        <div id="sla-settings" class="panel">
+            <div class="section-header compact">
+                <div>
+                    <h2>SLA e tempo de atendimento</h2>
+                    <p class="muted">Configure os limites para pedidos do cardapio. Campos vazios deixam a etapa sem alerta.</p>
+                </div>
+                @if (Model.PendingSlaMinutes.HasValue || Model.AttendanceSlaMinutes.HasValue)
+                {
+                    <span class="status-pill">SLA ativo</span>
+                }
+            </div>
+            <form method="post" action="/restaurante/operacao/sla" class="form-grid">
+                @Html.AntiForgeryToken()
+                <label>
+                    Pendente para atendendo (min)
+                    <input name="PendingSlaMinutes" type="number" min="1" max="1440" value="@Model.PendingSlaMinutes" placeholder="Ex.: 10" />
+                </label>
+                <label>
+                    Atendendo para resolvido (min)
+                    <input name="AttendanceSlaMinutes" type="number" min="1" max="1440" value="@Model.AttendanceSlaMinutes" placeholder="Ex.: 20" />
+                </label>
+                <button class="button primary" type="submit">Salvar SLA</button>
+            </form>
+
+            <div class="grid four sla-metrics">
+                <div class="metric-card"><span class="metric">@Model.Bottlenecks.OpenOrderCount</span><p>Pedidos abertos</p></div>
+                <div class="metric-card"><span class="metric">@Model.Bottlenecks.PendingOrderCount</span><p>Pendentes</p></div>
+                <div class="metric-card"><span class="metric">@Model.Bottlenecks.AttendanceOrderCount</span><p>Atendendo</p></div>
+                <div class="metric-card @(Model.Bottlenecks.OverSlaOrderCount > 0 ? "danger-metric" : "")">
+                    <span class="metric">@Model.Bottlenecks.OverSlaOrderCount</span>
+                    <p>Fora do SLA</p>
+                </div>
+            </div>
+
+            <div class="table-list">
+                @if (Model.Bottlenecks.DelayedOrders.Count == 0)
+                {
+                    <p class="muted">Nenhum pedido fora do SLA no momento.</p>
+                }
+                else
+                {
+                    @foreach (var order in Model.Bottlenecks.DelayedOrders)
+                    {
+                        <article class="row-card is-over-sla">
+                            <div>
+                                <strong>@order.Title</strong>
+                                <p>@order.StatusLabel &middot; @order.StageLabel &middot; @order.ElapsedLabel de @order.SlaLabel</p>
+                                <p>@order.DelayLabel</p>
+                            </div>
+                            <span class="status-pill danger">Fora do SLA</span>
+                        </article>
+                    }
+                }
+            </div>
+        </div>
+
+        <div class="panel">
+            <div class="section-header compact">
+                <div>
+                    <h2>Login do garcom</h2>
+                    <p class="muted">
+                        Este acesso entra em <code>/garcom</code>. Depois de logado, o usuario escolhe qual garcom operacional representa.
+                    </p>
+                </div>
+                @if (Model.WaiterLogin.HasLogin)
+                {
+                    <span class="status-pill">@Model.WaiterLogin.Status</span>
+                }
+            </div>
+            <form method="post" action="/restaurante/operacao/login-garcom" class="form-grid">
+                @Html.AntiForgeryToken()
+                <label>
+                    Nome exibido
+                    <input name="FullName" value="@Model.WaiterLogin.FullName" placeholder="Garcom operacional" required minlength="2" maxlength="120" />
+                </label>
+                <label>
+                    Email de login
+                    <input name="Email" type="email" value="@Model.WaiterLogin.Email" placeholder="garcom@restaurante.com" required />
+                </label>
+                <label>
+                    Senha
+                    <input name="Password" type="password" placeholder="@(Model.WaiterLogin.HasLogin ? "Preencha apenas para trocar" : "Minimo 8 caracteres")" minlength="8" />
+                </label>
+                <button class="button primary" type="submit">
+                    @(Model.WaiterLogin.HasLogin ? "Atualizar login" : "Criar login")
+                </button>
+            </form>
+        </div>
+
+        <div class="grid two">
+            <div class="panel">
+                <h2>Garcons</h2>
+                <form method="post" action="/restaurante/operacao/garcons" class="inline-form">
+                    @Html.AntiForgeryToken()
+                    <input name="name" placeholder="Nome do garcom" required />
+                    <button class="button primary" type="submit">Adicionar</button>
+                </form>
+                <div class="table-list">
+                    @foreach (var waiter in Model.Waiters)
+                    {
+                        <article class="row-card">
+                            <strong>@waiter.Name</strong>
+                            <form method="post" action="/restaurante/operacao/garcons/@waiter.Id/delete">
+                                @Html.AntiForgeryToken()
+                                <button class="button danger" type="submit">Excluir</button>
+                            </form>
+                        </article>
+                    }
+                </div>
+            </div>
+
+            <div class="panel">
+                <h2>Mesas</h2>
+                <form method="post" action="/restaurante/operacao/mesas" class="form-grid">
+                    @Html.AntiForgeryToken()
+                    <label>Numero <input name="tableNumber" required /></label>
+                    <label>
+                        Garcom
+                        <select name="assignedWaiterId">
+                            <option value="">Fila geral</option>
+                            @foreach (var waiter in Model.Waiters)
+                            {
+                                <option value="@waiter.Id">@waiter.Name</option>
+                            }
+                        </select>
+                    </label>
+                    <button class="button primary" type="submit">Adicionar mesa</button>
+                </form>
+
+                <div class="table-list">
+                    @foreach (var table in Model.Tables)
+                    {
+                        <article class="row-card">
+                            <div>
+                                <strong>Mesa @table.TableNumber</strong>
+                                <p>@(table.AssignedWaiterName ?? "Fila geral")</p>
+                            </div>
+                            <div class="row-actions">
+                                <form method="post" action="/restaurante/operacao/mesas/@table.Id" class="inline-form">
+                                    @Html.AntiForgeryToken()
+                                    <select name="assignedWaiterId">
+                                        <option value="">Fila geral</option>
+                                        @foreach (var waiter in Model.Waiters)
+                                        {
+                                            <option value="@waiter.Id" selected="@(table.AssignedWaiterId == waiter.Id)">@waiter.Name</option>
+                                        }
+                                    </select>
+                                    <button class="button" type="submit">Salvar</button>
+                                </form>
+                                <form method="post" action="/restaurante/operacao/mesas/@table.Id/delete">
+                                    @Html.AntiForgeryToken()
+                                    <button class="button danger" type="submit">Excluir</button>
+                                </form>
+                            </div>
+                        </article>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+</section>

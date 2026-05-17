@@ -1,0 +1,92 @@
+@model RestaurantOverviewView
+@{
+    ViewData["Title"] = "Restaurante";
+}
+
+<section class="stack">
+    <div class="section-header">
+        <div>
+            <p class="eyebrow">&Aacute;rea restaurante</p>
+            <h1>@Model.RestaurantName</h1>
+        </div>
+        <a class="button" href="@Model.PublicMenuUrl">Abrir card&aacute;pio p&uacute;blico</a>
+    </div>
+
+    <div class="grid four">
+        <div class="panel"><span class="metric">@Model.CategoryCount</span><p>Categorias</p></div>
+        <div class="panel"><span class="metric">@Model.ActiveItemCount</span><p>Itens ativos</p></div>
+        <div class="panel"><span class="metric">@Model.TableCount</span><p>Mesas</p></div>
+        <div class="panel"><span class="metric">@Model.Feedback.AverageRatingLabel</span><p>Feedbacks (@Model.Feedback.TotalFeedbacks)</p></div>
+    </div>
+
+    <div class="grid two">
+        <a class="panel action-panel" href="/restaurante/cardapio">
+            <h2>Editar card&aacute;pio</h2>
+            <p>Atualize marca, categorias, itens e imagens.</p>
+        </a>
+        <a class="panel action-panel" href="/restaurante/operacao">
+            <h2>Opera&ccedil;&atilde;o</h2>
+            <p>Configure gar&ccedil;ons, mesas e respons&aacute;veis.</p>
+        </a>
+    </div>
+
+    <div id="feedback-dashboard" class="panel feedback-dashboard" data-feedback-dashboard>
+        <div class="section-header compact">
+            <div>
+                <p class="eyebrow">Feedbacks</p>
+                <h2>Avalia&ccedil;&otilde;es dos clientes</h2>
+            </div>
+            <div class="feedback-average">
+                <strong>@Model.Feedback.AverageRatingLabel</strong>
+                <span>@Model.Feedback.TotalFeedbacks avalia&ccedil;&atilde;o(&otilde;es)</span>
+            </div>
+        </div>
+
+        @if (Model.Feedback.TotalFeedbacks == 0)
+        {
+            <p class="muted">Nenhuma avalia&ccedil;&atilde;o recebida ainda.</p>
+        }
+        else
+        {
+            <div class="feedback-layout">
+                <div class="feedback-chart" aria-label="Distribui&ccedil;&atilde;o de avalia&ccedil;&otilde;es por estrela">
+                    <button class="feedback-filter is-active" type="button" data-feedback-filter="all">Todas</button>
+                    @foreach (var rating in Model.Feedback.Ratings)
+                    {
+                        <button class="feedback-rating-row" type="button" data-feedback-filter="@rating.Rating">
+                            <span>@rating.Label</span>
+                            <span class="feedback-bar" style="--feedback-width:@rating.Percentage%">
+                                <span></span>
+                            </span>
+                            <strong>@rating.Count</strong>
+                        </button>
+                    }
+                </div>
+
+                <div class="feedback-comments">
+                    <div class="feedback-comments-header">
+                        <h3>Coment&aacute;rios</h3>
+                        <span data-feedback-visible-count>@Model.Feedback.Comments.Count</span>
+                    </div>
+                    <div class="table-list">
+                        @foreach (var comment in Model.Feedback.Comments)
+                        {
+                            <article class="row-card feedback-comment" data-feedback-rating="@comment.Rating">
+                                <div>
+                                    <strong>@comment.RatingLabel</strong>
+                                    <p>@comment.Comment</p>
+                                    <p>Mesa @comment.TableNumber &middot; Pedido @ShortOrder(comment.OrderId) &middot; @comment.TotalLabel &middot; @comment.CreatedAtLabel</p>
+                                </div>
+                            </article>
+                        }
+                    </div>
+                    <p class="muted feedback-empty-filter" hidden>Nenhum coment&aacute;rio nessa faixa de estrelas.</p>
+                </div>
+            </div>
+        }
+    </div>
+</section>
+
+@functions {
+    private static string ShortOrder(Guid id) => id.ToString()[..8];
+}

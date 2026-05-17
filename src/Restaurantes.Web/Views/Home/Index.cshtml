@@ -1,0 +1,32 @@
+@model Guid
+@{
+    ViewData["Title"] = "Início";
+}
+
+<section class="hero">
+    <div>
+        <p class="eyebrow">Refatoração .NET</p>
+        <h1>Sistema de restaurantes em ASP.NET Core MVC, Identity e SQLite.</h1>
+        <p>
+            A aplicação mantém áreas por perfil, cardápio público, gestão de cardápio,
+            mesas, garçons, pedidos e fila operacional.
+        </p>
+        <div class="actions">
+            <a class="button primary" href="/login">Acessar login</a>
+            <a class="button" href="/cardapio/@Model">Abrir cardápio demo</a>
+        </div>
+    </div>
+    <aside class="panel">
+        <h2>Acessos locais</h2>
+        <dl class="credentials">
+            <dt>MASTER</dt>
+            <dd>master@restaurantes.local</dd>
+            <dt>ADMIN_RESTAURANTE</dt>
+            <dd>admin@restaurantes.local</dd>
+            <dt>GARCOM</dt>
+            <dd>garcom@restaurantes.local</dd>
+            <dt>Senha</dt>
+            <dd>DevPass@123</dd>
+        </dl>
+    </aside>
+</section>

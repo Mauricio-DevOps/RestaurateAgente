@@ -1,0 +1,34 @@
+@model WaiterDashboardView
+@{
+    ViewData["Title"] = "Garçom";
+}
+
+<section class="stack">
+    <div class="section-header">
+        <div>
+            <p class="eyebrow">Fila do garçom</p>
+            <h1>@Model.RestaurantName</h1>
+        </div>
+    </div>
+
+    <div class="panel">
+        <form method="post" action="/garcom/selecionar" class="inline-form">
+            @Html.AntiForgeryToken()
+            <select name="waiterId" required>
+                <option value="">Selecione o garçom</option>
+                @foreach (var waiter in Model.Waiters)
+                {
+                    <option value="@waiter.Id" selected="@(Model.SelectedWaiterId == waiter.Id)">@waiter.Name</option>
+                }
+            </select>
+            <button class="button primary" type="submit">Atender como</button>
+        </form>
+    </div>
+
+    <div id="waiter-queue"
+         class="panel"
+         data-refresh-url="/api/garcom/queue"
+         data-status-url="/api/garcom/events/status">
+        <p class="muted">Carregando fila...</p>
+    </div>
+</section>

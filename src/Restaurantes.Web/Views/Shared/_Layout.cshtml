@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Restaurantes</title>
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+@using Restaurantes.Web.Auth
+@{
+    var bodyClass = ViewData["BodyClass"] as string;
+    var bodyStyle = ViewData["BodyStyle"] as string;
+    var hideLogout = ViewData["HideLogout"] is bool hideLogoutValue && hideLogoutValue;
+    var showNavigation = User.Identity?.IsAuthenticated == true && !hideLogout;
+    var currentController = ViewContext.RouteData.Values["controller"]?.ToString() ?? string.Empty;
+    var currentAction = ViewContext.RouteData.Values["action"]?.ToString() ?? string.Empty;
+    var hasRestaurantPortalAccess = RestaurantPortalAccess.HasRestaurantAccess(User);
+    var hasWhatsAppPortalAccess = RestaurantPortalAccess.HasWhatsAppAccess(User);
+
+    string MenuClass(string controller, string action)
+    {
+        return string.Equals(currentController, controller, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(currentAction, action, StringComparison.OrdinalIgnoreCase)
+                ? "button primary"
+                : "button";
+    }
+}
+<body class="@bodyClass" style="@bodyStyle">
+    @if (showNavigation)
+    {
+        <header class="topbar">
+            <a class="brand" href="/">
+                <span class="brand-mark">R</span>
+                <span>
+                    <strong>Restaurantes</strong><br />
+                    <small>Area administrativa</small>
+                </span>
+            </a>
+
+            <nav class="nav" aria-label="Menu principal">
+                @if (User.IsInRole(AppRoles.Master))
+                {
+                    <a class="button" href="/master">Master</a>
+                }
+                @if (User.IsInRole(AppRoles.AdminRestaurante) && hasRestaurantPortalAccess)
+                {
+                    <a class="@MenuClass("Restaurante", "Index")" href="/restaurante">Restaurante</a>
+                    <a class="@MenuClass("Restaurante", "Cardapio")" href="/restaurante/cardapio">Cardapio</a>
+                    <a class="@MenuClass("Restaurante", "Delivery")" href="/restaurante/delivery">Delivery</a>
+                }
+                @if (User.IsInRole(AppRoles.AdminRestaurante))
+                {
+                    <a class="@MenuClass("Restaurante", "Operacao")" href="/restaurante/operacao">Operacao</a>
+                }
+                @if (User.IsInRole(AppRoles.AdminRestaurante) && hasWhatsAppPortalAccess)
+                {
+                    <a class="button" href="@RestaurantPortalAccess.BuildWhatsAppBridgePath("/Dashboard")">Dashboard WhatsApp</a>
+                    <a class="button" href="@RestaurantPortalAccess.BuildWhatsAppBridgePath("/Products")">Produtos WhatsApp</a>
+                    <a class="button" href="@RestaurantPortalAccess.BuildWhatsAppBridgePath("/Orders")">Pedidos WhatsApp</a>
+                    <a class="button" href="@RestaurantPortalAccess.BuildWhatsAppBridgePath("/Agent")">Agente WhatsApp</a>
+                }
+                @if (User.IsInRole(AppRoles.Garcom))
+                {
+                    <a class="button" href="/garcom">Garcom</a>
+                }
+            </nav>
+
+            <form method="post" action="/logout">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="button">Sair</button>
+            </form>
+        </header>
+    }
+
+    <main class="page">
+        @if (TempData["Feedback"] is string feedback)
+        {
+            <div class="notice">@feedback</div>
+        }
+        @RenderBody()
+    </main>
+
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>
