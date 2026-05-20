@@ -6,6 +6,7 @@
     <title>@ViewData["Title"] - Restaurantes</title>
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
 </head>
+@using Restaurantes.Web.Auth
 @{
     var bodyClass = ViewData["BodyClass"] as string;
     var bodyStyle = ViewData["BodyStyle"] as string;
@@ -57,7 +58,6 @@
                     <a class="button" href="@RestaurantPortalAccess.BuildWhatsAppBridgePath("/Products")">Produtos WhatsApp</a>
                     <a class="button" href="@RestaurantPortalAccess.BuildWhatsAppBridgePath("/Orders")">Pedidos WhatsApp</a>
                     <a class="button" href="@RestaurantPortalAccess.BuildWhatsAppBridgePath("/Agent")">Agente WhatsApp</a>
-                    <a class="button" href="@RestaurantPortalAccess.BuildWhatsAppBridgePath("/Personalizar")">Personalizar</a>
                 }
                 @if (User.IsInRole(AppRoles.Garcom))
                 {

@@ -63,7 +63,6 @@ public sealed class Restaurant
     public RestaurantAccessMode AccessMode { get; set; } = RestaurantAccessMode.Ambos;
     public string? PublicDescription { get; set; }
     public string? CoverImageUrl { get; set; }
-    public string? LogoDataUrl { get; set; }
     public string PrimaryColor { get; set; } = "#B14623";
     public string SecondaryColor { get; set; } = "#F2D0B8";
     public string BackgroundColor { get; set; } = "#F6F3EF";

@@ -82,8 +82,6 @@ public sealed class RestaurantService
         var menuTheme = NormalizeMenuTheme(restaurant.MenuTheme);
         var menuMode = NormalizeMenuMode(restaurant.MenuMode);
         var palette = BuildMenuPalette(brandColor, menuTheme, menuMode);
-        var textColor = NormalizeBrandColor(restaurant.SecondaryColor, palette.TextColor);
-        var backgroundColor = NormalizeBrandColor(restaurant.BackgroundColor, palette.BackgroundColor);
         var now = DateTimeOffset.Now;
 
         return new RestaurantMenuEditorView
@@ -93,8 +91,8 @@ public sealed class RestaurantService
             PublicDescription = restaurant.PublicDescription,
             CoverImageUrl = restaurant.CoverImageUrl,
             PrimaryColor = brandColor,
-            SecondaryColor = textColor,
-            BackgroundColor = backgroundColor,
+            SecondaryColor = palette.TextColor,
+            BackgroundColor = palette.BackgroundColor,
             MenuTheme = menuTheme,
             MenuMode = menuMode,
             Tables = tables.Select(table => new RestaurantTableView
@@ -127,44 +125,6 @@ public sealed class RestaurantService
         {
             restaurant.CoverImageUrl = coverImageUrl;
         }
-        restaurant.UpdatedAt = DateTimeOffset.UtcNow;
-        await _db.SaveChangesAsync();
-    }
-
-    public async Task SyncBrandingFromWhatsAppAsync(BrandingSyncRequest request)
-    {
-        var storeId = string.IsNullOrWhiteSpace(request.StoreId) ? null : request.StoreId.Trim();
-        var siteName = string.IsNullOrWhiteSpace(request.SiteName) ? null : request.SiteName.Trim();
-        if (storeId is null || siteName is null)
-        {
-            throw new InvalidOperationException("StoreId and site name are required.");
-        }
-
-        var restaurant = await _db.Restaurants.FirstOrDefaultAsync(item => item.WhatsAppPhone == storeId);
-        if (restaurant is null)
-        {
-            throw new InvalidOperationException("Restaurant not found for this WhatsApp phone.");
-        }
-
-        restaurant.Name = siteName;
-        restaurant.PrimaryColor = NormalizeBrandColor(request.PrimaryColor, "#B14623");
-        restaurant.SecondaryColor = NormalizeBrandColor(request.SecondaryColor, "#241914");
-        restaurant.BackgroundColor = NormalizeBrandColor(request.BackgroundColor, "#F6F3EF");
-        restaurant.MenuTheme = NormalizeMenuTheme(request.MenuTheme);
-        restaurant.MenuMode = NormalizeMenuMode(request.MenuMode);
-        if (request.RemoveLogo)
-        {
-            restaurant.LogoDataUrl = null;
-        }
-        else
-        {
-            var logoDataUrl = NormalizeLogoDataUrl(request.LogoDataUrl);
-            if (logoDataUrl is not null)
-            {
-                restaurant.LogoDataUrl = logoDataUrl;
-            }
-        }
-
         restaurant.UpdatedAt = DateTimeOffset.UtcNow;
         await _db.SaveChangesAsync();
     }
@@ -560,8 +520,6 @@ public sealed class RestaurantService
         var menuTheme = NormalizeMenuTheme(restaurant.MenuTheme);
         var menuMode = NormalizeMenuMode(restaurant.MenuMode);
         var palette = BuildMenuPalette(brandColor, menuTheme, menuMode);
-        var textColor = NormalizeBrandColor(restaurant.SecondaryColor, palette.TextColor);
-        var backgroundColor = NormalizeBrandColor(restaurant.BackgroundColor, palette.BackgroundColor);
         var now = DateTimeOffset.Now;
         var mappedCategories = categories.Select(category => MapCategory(category, now)).ToList();
         var promotionalItems = mappedCategories
@@ -581,10 +539,9 @@ public sealed class RestaurantService
             RestaurantName = restaurant.Name,
             PublicDescription = restaurant.PublicDescription,
             CoverImageUrl = restaurant.CoverImageUrl,
-            LogoDataUrl = restaurant.LogoDataUrl,
-            PrimaryColor = brandColor,
-            SecondaryColor = textColor,
-            BackgroundColor = backgroundColor,
+            PrimaryColor = palette.PrimaryColor,
+            SecondaryColor = palette.TextColor,
+            BackgroundColor = palette.BackgroundColor,
             MenuTheme = menuTheme,
             MenuMode = menuMode,
             MutedColor = palette.MutedColor,
@@ -1888,51 +1845,6 @@ public sealed class RestaurantService
         return color.Length == 7 && color.Skip(1).All(Uri.IsHexDigit)
             ? color.ToUpperInvariant()
             : fallback;
-    }
-
-    private static string? NormalizeLogoDataUrl(string? value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return null;
-        }
-
-        var trimmed = value.Trim();
-        if (trimmed.Length > 750_000)
-        {
-            throw new InvalidOperationException("Logo is too large.");
-        }
-
-        var commaIndex = trimmed.IndexOf(',');
-        if (commaIndex <= 0)
-        {
-            throw new InvalidOperationException("Logo must be a data URL.");
-        }
-
-        var header = trimmed[..commaIndex].ToLowerInvariant();
-        if (header is not "data:image/png;base64" and
-            not "data:image/jpeg;base64" and
-            not "data:image/webp;base64")
-        {
-            throw new InvalidOperationException("Logo must be PNG, JPEG or WEBP.");
-        }
-
-        byte[] bytes;
-        try
-        {
-            bytes = Convert.FromBase64String(trimmed[(commaIndex + 1)..]);
-        }
-        catch (FormatException ex)
-        {
-            throw new InvalidOperationException("Logo data is invalid.", ex);
-        }
-
-        if (bytes.Length > 512 * 1024)
-        {
-            throw new InvalidOperationException("Logo is too large.");
-        }
-
-        return trimmed;
     }
 
     private sealed record CouponOrderUsage(Guid CouponId, int DiscountCents, DateTimeOffset CreatedAt);

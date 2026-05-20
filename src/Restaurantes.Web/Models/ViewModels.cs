@@ -278,18 +278,6 @@ public sealed record RestaurantWhatsAppSsoContext(
     string CompanyPhone,
     RestaurantAccessMode AccessMode);
 
-public sealed record BrandingSyncRequest(
-    string StoreId,
-    string SiteName,
-    string PaletteKey,
-    string PrimaryColor,
-    string SecondaryColor,
-    string BackgroundColor,
-    string MenuTheme,
-    string MenuMode,
-    string? LogoDataUrl,
-    bool RemoveLogo);
-
 public sealed class WaiterLoginView
 {
     public bool HasLogin { get; set; }
@@ -330,7 +318,6 @@ public sealed class PublicMenuView
     public string RestaurantName { get; set; } = "";
     public string? PublicDescription { get; set; }
     public string? CoverImageUrl { get; set; }
-    public string? LogoDataUrl { get; set; }
     public string PrimaryColor { get; set; } = "#B14623";
     public string SecondaryColor { get; set; } = "#F2D0B8";
     public string BackgroundColor { get; set; } = "#F6F3EF";
