@@ -82,6 +82,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
                 .HasMaxLength(24)
                 .HasDefaultValue(RestaurantAccessMode.Ambos);
             entity.Property(restaurant => restaurant.PublicDescription).HasMaxLength(280);
+            entity.Property(restaurant => restaurant.LogoDataUrl);
             entity.Property(restaurant => restaurant.PrimaryColor).HasMaxLength(7);
             entity.Property(restaurant => restaurant.SecondaryColor).HasMaxLength(7);
             entity.Property(restaurant => restaurant.BackgroundColor).HasMaxLength(7);

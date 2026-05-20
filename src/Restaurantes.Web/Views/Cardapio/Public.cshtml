@@ -5,6 +5,9 @@
     ViewData["BodyClass"] = $"public-menu-page menu-mode-{Model.MenuMode.ToLowerInvariant()}";
     ViewData["BodyStyle"] = $"--menu-background:{Model.BackgroundColor}; --menu-primary:{Model.PrimaryColor}; --menu-secondary:{Model.SecondaryColor}; --menu-text:{Model.SecondaryColor}; --menu-muted:{Model.MutedColor}; --menu-surface-color:{Model.SurfaceColor}; --menu-surface-strong-color:{Model.SurfaceStrongColor}; --menu-border-color:{Model.BorderColor}; --menu-hero-overlay:{Model.HeroOverlayColor}; --menu-accent-soft:{Model.AccentSoftColor}; --menu-button-text:{Model.ButtonTextColor}";
     var itemCount = Model.Categories.Sum(category => category.Items.Count);
+    var logoInitial = string.IsNullOrWhiteSpace(Model.RestaurantName)
+        ? "R"
+        : Model.RestaurantName.Trim()[0].ToString().ToUpperInvariant();
 }
 
 <section id="public-menu"
@@ -20,6 +23,16 @@
             <img class="public-menu-hero-media" src="@Model.CoverImageUrl" alt="Imagem de capa de @Model.RestaurantName" />
         }
         <div class="public-menu-hero-content">
+            <span class="public-menu-logo">
+                @if (!string.IsNullOrWhiteSpace(Model.LogoDataUrl))
+                {
+                    <img src="@Model.LogoDataUrl" alt="Logo de @Model.RestaurantName" />
+                }
+                else
+                {
+                    @logoInitial
+                }
+            </span>
             <p class="eyebrow">Cardápio digital</p>
             <h1>@Model.RestaurantName</h1>
             @if (!string.IsNullOrWhiteSpace(Model.PublicDescription))

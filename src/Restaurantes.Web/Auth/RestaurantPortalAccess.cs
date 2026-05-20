@@ -19,7 +19,8 @@ public static class RestaurantPortalAccess
         "/Dashboard",
         "/Products",
         "/Orders",
-        "/Agent"
+        "/Agent",
+        "/Personalizar"
     };
 
     public static RestaurantAccessMode Parse(string? value)
@@ -164,6 +165,7 @@ public static class RestaurantPortalAccess
             "/restaurante/whatsapp/products" => "/Products",
             "/restaurante/whatsapp/orders" => "/Orders",
             "/restaurante/whatsapp/agent" => "/Agent",
+            "/restaurante/whatsapp/personalizar" => "/Personalizar",
             _ => string.Empty
         };
 

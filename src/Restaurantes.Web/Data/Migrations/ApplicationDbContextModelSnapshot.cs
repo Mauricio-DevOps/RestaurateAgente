@@ -615,6 +615,9 @@ namespace Restaurantes.Web.Data.Migrations
                     b.Property<string>("CoverImageUrl")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("LogoDataUrl")
+                        .HasColumnType("TEXT");
+
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("TEXT");
 
