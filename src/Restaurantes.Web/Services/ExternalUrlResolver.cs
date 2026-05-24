@@ -17,6 +17,22 @@ public sealed class ExternalUrlResolver
         return $"{baseUrl}{NormalizeLocalPath(localPath)}";
     }
 
+    public string BuildMercadoPagoCallbackUrl(string localPath)
+    {
+        var configuredBaseUrl = _configuration["MercadoPago:PublicBaseUrl"];
+        if (!string.IsNullOrWhiteSpace(configuredBaseUrl))
+        {
+            return $"{configuredBaseUrl.TrimEnd('/')}{NormalizeLocalPath(localPath)}";
+        }
+
+        var request = _httpContextAccessor.HttpContext?.Request;
+        var fallback = request?.Host.HasValue == true
+            ? $"{request.Scheme}://{request.Host.Value}"
+            : "http://localhost:5000";
+
+        return $"{fallback.TrimEnd('/')}{NormalizeLocalPath(localPath)}";
+    }
+
     private string ResolveBaseUrl(string configurationKey, string fallback)
     {
         var configured = (_configuration[configurationKey] ?? fallback).TrimEnd('/');

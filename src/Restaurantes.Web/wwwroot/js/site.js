@@ -494,6 +494,7 @@ function setupPublicMenu() {
         orderPayload.deliveryAddress = deliveryAddressInput?.value.trim() || "";
       }
       const payload = await postJson(`/api/public/restaurants/${restaurantId}/order`, orderPayload);
+      const checkoutUrl = payload.data?.checkoutUrl;
       cart.splice(0, cart.length);
       clearAppliedCoupon();
       renderCart();
@@ -501,6 +502,11 @@ function setupPublicMenu() {
         window.localStorage.setItem(storageKey, tableSelect.value);
         selectionSource = "saved";
         confirmedTablesWithoutOpenTab.delete(tableSelect.value);
+      }
+      if (checkoutUrl) {
+        setFeedback("Pedido criado. Redirecionando para pagamento...");
+        window.location.assign(checkoutUrl);
+        return;
       }
       setFeedback(payload.message || "Pedido enviado.");
       showOrderFeedback(payload.data?.orderId);
@@ -863,11 +869,12 @@ function setupDeliveryOrders() {
           ${couponSummary}
           <p>${escapeHtml(order.customerPhone)} · ${escapeHtml(order.deliveryAddress)}</p>
           <p>${order.status.replaceAll("_", " ")}</p>
+          <p>${escapeHtml(order.paymentStatusLabel || order.paymentStatus || "")}</p>
           ${items}
         </div>
         <div class="row-actions">
-          ${order.status === "PENDENTE" ? `<button class="button" data-next="EM_ATENDIMENTO">Atender</button>` : ""}
-          ${order.status !== "RESOLVIDO" ? `<button class="button primary" data-next="RESOLVIDO">Resolver</button>` : ""}
+          ${order.canUpdateOperationalStatus && order.status === "PENDENTE" ? `<button class="button" data-next="EM_ATENDIMENTO">Atender</button>` : ""}
+          ${order.canUpdateOperationalStatus && order.status !== "RESOLVIDO" ? `<button class="button primary" data-next="RESOLVIDO">Resolver</button>` : ""}
         </div>`;
       card.querySelectorAll("button[data-next]").forEach((button) => {
         button.addEventListener("click", async () => {

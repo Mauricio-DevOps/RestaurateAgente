@@ -24,6 +24,10 @@ public sealed class RestaurantAdminView
     public EntityStatus Status { get; set; }
     public RestaurantAccessMode AccessMode { get; set; }
     public string AccessModeLabel { get; set; } = "";
+    public bool HasPaymentSettings { get; set; }
+    public bool IsPaymentEnabled { get; set; }
+    public string PaymentStatusLabel { get; set; } = "";
+    public string? MercadoPagoUserId { get; set; }
 }
 
 public sealed class MasterDashboardView
@@ -52,6 +56,18 @@ public sealed class CreateRestaurantAdminInput
 public sealed class UpdateRestaurantAccessModeInput
 {
     public RestaurantAccessMode AccessMode { get; set; } = RestaurantAccessMode.Ambos;
+}
+
+public sealed class RestaurantPaymentSettingsInput
+{
+    [Required]
+    public Guid RestaurantId { get; set; }
+
+    [Required, MaxLength(2048)]
+    public string AccessToken { get; set; } = "";
+
+    [Required, MaxLength(2048)]
+    public string WebhookSecret { get; set; } = "";
 }
 
 public sealed class RestaurantOverviewView
@@ -358,6 +374,26 @@ public sealed class PublicOrderSubmissionInput
     public List<PublicOrderItemInput> Items { get; set; } = [];
 }
 
+public sealed class PublicOrderSubmissionResult
+{
+    public Guid OrderId { get; set; }
+    public string Type { get; set; } = "";
+    public Guid? TableId { get; set; }
+    public string? TableNumber { get; set; }
+    public string? CustomerName { get; set; }
+    public string? CustomerPhone { get; set; }
+    public string? DeliveryAddress { get; set; }
+    public int SubtotalCents { get; set; }
+    public string SubtotalLabel { get; set; } = "";
+    public int DiscountCents { get; set; }
+    public string DiscountLabel { get; set; } = "";
+    public string? CouponCode { get; set; }
+    public int TotalCents { get; set; }
+    public string TotalLabel { get; set; } = "";
+    public PaymentStatus PaymentStatus { get; set; }
+    public string? CheckoutUrl { get; set; }
+}
+
 public sealed class PublicOrderItemInput
 {
     public Guid MenuItemId { get; set; }
@@ -466,6 +502,9 @@ public sealed class DeliveryOrderView
 {
     public Guid Id { get; set; }
     public OperationalEventStatus Status { get; set; }
+    public PaymentStatus PaymentStatus { get; set; }
+    public string PaymentStatusLabel { get; set; } = "";
+    public bool CanUpdateOperationalStatus { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset? AcknowledgedAt { get; set; }
     public DateTimeOffset? ResolvedAt { get; set; }

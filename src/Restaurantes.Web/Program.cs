@@ -49,12 +49,21 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
 });
 builder.Services.Configure<SsoOptions>(builder.Configuration.GetSection(SsoOptions.SectionName));
 builder.Services.Configure<InternalApiOptions>(builder.Configuration.GetSection(InternalApiOptions.SectionName));
+builder.Services.Configure<MercadoPagoOptions>(builder.Configuration.GetSection(MercadoPagoOptions.SectionName));
+builder.Services.AddDataProtection();
 builder.Services.AddScoped<IUserClaimsPrincipalFactory<ApplicationUser>, RestaurantClaimsPrincipalFactory>();
 builder.Services.AddScoped<MasterService>();
 builder.Services.AddScoped<RestaurantService>();
+builder.Services.AddScoped<RestaurantPaymentSettingsService>();
+builder.Services.AddScoped<PublicOrderPaymentService>();
+builder.Services.AddScoped<MercadoPagoWebhookService>();
 builder.Services.AddScoped<ExternalUrlResolver>();
 builder.Services.AddScoped<WaiterLoginService>();
 builder.Services.AddSingleton<RestaurantSsoTokenService>();
+builder.Services.AddHttpClient<IMercadoPagoClient, MercadoPagoClient>(client =>
+{
+    client.BaseAddress = new Uri("https://api.mercadopago.com");
+});
 builder.Services.AddHttpClient<InternalWhatsAppApiClient>(client =>
 {
     var baseUrl = builder.Configuration["InternalApi:BaseUrl"] ?? "http://localhost:5253";

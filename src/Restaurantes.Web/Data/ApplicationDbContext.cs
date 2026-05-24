@@ -46,6 +46,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     }
 
     public DbSet<Restaurant> Restaurants => Set<Restaurant>();
+    public DbSet<RestaurantPaymentSettings> RestaurantPaymentSettings => Set<RestaurantPaymentSettings>();
+    public DbSet<PaymentWebhookEvent> PaymentWebhookEvents => Set<PaymentWebhookEvent>();
     public DbSet<Cliente> Clientes => Set<Cliente>();
     public DbSet<MenuCategory> MenuCategories => Set<MenuCategory>();
     public DbSet<MenuItem> MenuItems => Set<MenuItem>();
@@ -90,6 +92,36 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             entity.Property(restaurant => restaurant.WhatsAppPhone).HasMaxLength(32);
             entity.HasIndex(restaurant => restaurant.Slug).IsUnique();
             entity.HasIndex(restaurant => restaurant.WhatsAppPhone).IsUnique();
+        });
+
+        builder.Entity<RestaurantPaymentSettings>(entity =>
+        {
+            entity.Property(settings => settings.Provider).HasMaxLength(32).IsRequired();
+            entity.Property(settings => settings.ProtectedAccessToken).HasMaxLength(2048).IsRequired();
+            entity.Property(settings => settings.ProtectedWebhookSecret).HasMaxLength(2048).IsRequired();
+            entity.Property(settings => settings.MercadoPagoUserId).HasMaxLength(64);
+            entity.HasIndex(settings => new { settings.RestaurantId, settings.Provider }).IsUnique();
+            entity.HasOne(settings => settings.Restaurant)
+                .WithOne(restaurant => restaurant.PaymentSettings)
+                .HasForeignKey<RestaurantPaymentSettings>(settings => settings.RestaurantId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<PaymentWebhookEvent>(entity =>
+        {
+            entity.Property(webhook => webhook.Provider).HasMaxLength(32).IsRequired();
+            entity.Property(webhook => webhook.EventId).HasMaxLength(160).IsRequired();
+            entity.Property(webhook => webhook.ResourceId).HasMaxLength(160);
+            entity.Property(webhook => webhook.Action).HasMaxLength(80);
+            entity.Property(webhook => webhook.PaymentStatus).HasMaxLength(40);
+            entity.Property(webhook => webhook.RequestId).HasMaxLength(160);
+            entity.Property(webhook => webhook.PayloadJson).IsRequired();
+            entity.HasIndex(webhook => new { webhook.Provider, webhook.EventId }).IsUnique();
+            entity.HasIndex(webhook => new { webhook.RestaurantId, webhook.CreatedAt });
+            entity.HasOne(webhook => webhook.Restaurant)
+                .WithMany()
+                .HasForeignKey(webhook => webhook.RestaurantId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         builder.Entity<Cliente>(entity =>
@@ -179,12 +211,23 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             entity.Property(order => order.CustomerPhone).HasMaxLength(32);
             entity.Property(order => order.DeliveryAddress).HasMaxLength(500);
             entity.Property(order => order.Status).HasConversion<string>().HasMaxLength(32);
+            entity.Property(order => order.PaymentStatus)
+                .HasConversion<string>()
+                .HasMaxLength(32)
+                .HasDefaultValue(PaymentStatus.NAO_APLICAVEL);
+            entity.Property(order => order.PaymentProvider).HasMaxLength(32);
+            entity.Property(order => order.PaymentPreferenceId).HasMaxLength(160);
+            entity.Property(order => order.PaymentCheckoutUrl).HasMaxLength(1024);
+            entity.Property(order => order.PaymentId).HasMaxLength(160);
+            entity.Property(order => order.PaymentProviderStatus).HasMaxLength(64);
+            entity.Property(order => order.PaymentProviderStatusDetail).HasMaxLength(160);
             entity.Property(order => order.CouponCodeSnapshot).HasMaxLength(40);
             entity.Property(order => order.CouponTypeSnapshot).HasMaxLength(24);
             entity.Property(order => order.CouponValueSnapshot).HasPrecision(10, 2);
             entity.HasIndex(order => new { order.RestaurantId, order.CreatedAt });
             entity.HasIndex(order => new { order.RestaurantId, order.DiscountCouponId });
             entity.HasIndex(order => new { order.RestaurantId, order.Type, order.Status, order.CreatedAt });
+            entity.HasIndex(order => new { order.RestaurantId, order.PaymentStatus, order.CreatedAt });
             entity.HasOne(order => order.Tab)
                 .WithMany(tab => tab.Orders)
                 .HasForeignKey(order => order.TabId)

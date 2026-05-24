@@ -11,10 +11,14 @@ namespace Restaurantes.Web.Controllers;
 public sealed class MasterController : Controller
 {
     private readonly MasterService _masterService;
+    private readonly RestaurantPaymentSettingsService _paymentSettingsService;
 
-    public MasterController(MasterService masterService)
+    public MasterController(
+        MasterService masterService,
+        RestaurantPaymentSettingsService paymentSettingsService)
     {
         _masterService = masterService;
+        _paymentSettingsService = paymentSettingsService;
     }
 
     [HttpGet("")]
@@ -45,6 +49,33 @@ public sealed class MasterController : Controller
     {
         await _masterService.UpdateRestaurantAccessModeAsync(restaurantId, input.AccessMode);
         TempData["Feedback"] = "Modo de acesso atualizado.";
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpPost("restaurants/{restaurantId:guid}/payments/mercadopago")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SaveMercadoPagoSettings(Guid restaurantId, RestaurantPaymentSettingsInput input)
+    {
+        input.RestaurantId = restaurantId;
+        try
+        {
+            await _paymentSettingsService.SaveMercadoPagoSettingsAsync(input, HttpContext.RequestAborted);
+            TempData["Feedback"] = "Credenciais Mercado Pago salvas.";
+        }
+        catch (InvalidOperationException error)
+        {
+            TempData["Feedback"] = error.Message;
+        }
+
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpPost("restaurants/{restaurantId:guid}/payments/mercadopago/disable")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> DisableMercadoPagoSettings(Guid restaurantId)
+    {
+        await _paymentSettingsService.DisableMercadoPagoSettingsAsync(restaurantId, HttpContext.RequestAborted);
+        TempData["Feedback"] = "Pagamento Mercado Pago desativado.";
         return RedirectToAction(nameof(Index));
     }
 
