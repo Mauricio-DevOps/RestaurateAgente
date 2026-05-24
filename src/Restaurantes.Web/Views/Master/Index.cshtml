@@ -59,11 +59,15 @@
                         <strong>@admin.RestaurantName</strong>
                         @if (admin.HasAdmin)
                         {
-                            <p>@admin.AdminName · @admin.Email · @admin.Status · @admin.AccessModeLabel</p>
+                            <p>@admin.AdminName · @admin.Email · @admin.Status · @admin.AccessModeLabel · @admin.PaymentStatusLabel</p>
                         }
                         else
                         {
-                            <p>@admin.AdminName · @admin.Status · @admin.AccessModeLabel</p>
+                            <p>@admin.AdminName · @admin.Status · @admin.AccessModeLabel · @admin.PaymentStatusLabel</p>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(admin.MercadoPagoUserId))
+                        {
+                            <p class="muted">Mercado Pago user ID: @admin.MercadoPagoUserId</p>
                         }
                     </div>
                     <div class="row-actions">
@@ -84,6 +88,19 @@
                             </select>
                             <button class="button" type="submit">Acesso</button>
                         </form>
+                        <form method="post" action="/master/restaurants/@admin.RestaurantId/payments/mercadopago" class="inline-form">
+                            @Html.AntiForgeryToken()
+                            <input name="AccessToken" type="password" placeholder="Access token Mercado Pago" required maxlength="2048" autocomplete="off" />
+                            <input name="WebhookSecret" type="password" placeholder="Webhook secret" required maxlength="2048" autocomplete="off" />
+                            <button class="button" type="submit">Pagamento</button>
+                        </form>
+                        @if (admin.HasPaymentSettings && admin.IsPaymentEnabled)
+                        {
+                            <form method="post" action="/master/restaurants/@admin.RestaurantId/payments/mercadopago/disable">
+                                @Html.AntiForgeryToken()
+                                <button class="button" type="submit">Desativar pagamento</button>
+                            </form>
+                        }
                         @if (admin.HasAdmin && !string.IsNullOrWhiteSpace(admin.UserId))
                         {
                             <form method="post" action="/master/admins/@admin.UserId/toggle">

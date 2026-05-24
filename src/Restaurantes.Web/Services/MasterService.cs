@@ -29,6 +29,9 @@ public sealed class MasterService
         var restaurants = await _db.Restaurants
             .OrderBy(restaurant => restaurant.Name)
             .ToListAsync();
+        var paymentSettingsByRestaurantId = await _db.RestaurantPaymentSettings
+            .Where(settings => settings.Provider == "MercadoPago")
+            .ToDictionaryAsync(settings => settings.RestaurantId);
 
         return new MasterDashboardView
         {
@@ -36,6 +39,7 @@ public sealed class MasterService
                 .Select(restaurant =>
                 {
                     adminByRestaurantId.TryGetValue(restaurant.Id, out var user);
+                    paymentSettingsByRestaurantId.TryGetValue(restaurant.Id, out var paymentSettings);
                     return new RestaurantAdminView
                     {
                         UserId = user?.Id,
@@ -46,7 +50,15 @@ public sealed class MasterService
                         Email = user?.Email ?? "",
                         Status = user?.ProfileStatus ?? restaurant.Status,
                         AccessMode = restaurant.AccessMode,
-                        AccessModeLabel = RestaurantPortalAccess.ToDisplayLabel(restaurant.AccessMode)
+                        AccessModeLabel = RestaurantPortalAccess.ToDisplayLabel(restaurant.AccessMode),
+                        HasPaymentSettings = paymentSettings is not null,
+                        IsPaymentEnabled = paymentSettings?.IsEnabled == true,
+                        PaymentStatusLabel = paymentSettings is null
+                            ? "Pagamento nao configurado"
+                            : paymentSettings.IsEnabled
+                                ? "Pagamento ativo"
+                                : "Pagamento inativo",
+                        MercadoPagoUserId = paymentSettings?.MercadoPagoUserId
                     };
                 })
                 .ToList()

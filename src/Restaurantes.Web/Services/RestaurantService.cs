@@ -583,7 +583,7 @@ public sealed class RestaurantService
         };
     }
 
-    public async Task<object> SubmitPublicOrderAsync(PublicOrderSubmissionInput input)
+    public async Task<PublicOrderSubmissionResult> SubmitPublicOrderAsync(PublicOrderSubmissionInput input)
     {
         var groupedItems = NormalizeOrderItems(input.Items);
         var isTableOrder = input.TableId.HasValue;
@@ -639,7 +639,9 @@ public sealed class RestaurantService
             CouponCodeSnapshot = couponPricing.Coupon?.Code,
             CouponTypeSnapshot = couponPricing.Coupon?.Type.ToString(),
             CouponValueSnapshot = couponPricing.Coupon?.Value,
-            TotalCents = totalCents
+            TotalCents = totalCents,
+            PaymentStatus = isTableOrder ? PaymentStatus.NAO_APLICAVEL : PaymentStatus.AGUARDANDO_PAGAMENTO,
+            PaymentProvider = isTableOrder ? null : "MercadoPago"
         };
 
         foreach (var item in groupedItems)
@@ -661,22 +663,23 @@ public sealed class RestaurantService
         _db.Orders.Add(order);
         await _db.SaveChangesAsync();
 
-        return new
+        return new PublicOrderSubmissionResult
         {
-            orderId = order.Id,
-            type = order.Type.ToString(),
-            tableId = table?.Id,
-            tableNumber = table?.TableNumber,
-            customerName = order.CustomerName,
-            customerPhone = order.CustomerPhone,
-            deliveryAddress = order.DeliveryAddress,
-            subtotalCents,
-            subtotalLabel = RestaurantText.FormatPrice(subtotalCents),
-            discountCents = couponPricing.DiscountCents,
-            discountLabel = RestaurantText.FormatPrice(couponPricing.DiscountCents),
-            couponCode = couponPricing.Coupon?.Code,
-            totalCents,
-            totalLabel = RestaurantText.FormatPrice(totalCents)
+            OrderId = order.Id,
+            Type = order.Type.ToString(),
+            TableId = table?.Id,
+            TableNumber = table?.TableNumber,
+            CustomerName = order.CustomerName,
+            CustomerPhone = order.CustomerPhone,
+            DeliveryAddress = order.DeliveryAddress,
+            SubtotalCents = subtotalCents,
+            SubtotalLabel = RestaurantText.FormatPrice(subtotalCents),
+            DiscountCents = couponPricing.DiscountCents,
+            DiscountLabel = RestaurantText.FormatPrice(couponPricing.DiscountCents),
+            CouponCode = couponPricing.Coupon?.Code,
+            TotalCents = totalCents,
+            TotalLabel = RestaurantText.FormatPrice(totalCents),
+            PaymentStatus = order.PaymentStatus
         };
     }
 
@@ -971,6 +974,11 @@ public sealed class RestaurantService
             ?? throw new InvalidOperationException("Pedido delivery nao encontrado.");
         var now = DateTimeOffset.UtcNow;
 
+        if (order.PaymentStatus is not PaymentStatus.PAGAMENTO_APROVADO and not PaymentStatus.NAO_APLICAVEL)
+        {
+            throw new InvalidOperationException("Aguarde a aprovacao do pagamento antes de atualizar este pedido.");
+        }
+
         order.Status = input.NextStatus;
         if (input.NextStatus == OperationalEventStatus.EM_ATENDIMENTO)
         {
@@ -984,6 +992,68 @@ public sealed class RestaurantService
         }
         order.UpdatedAt = now;
         await _db.SaveChangesAsync();
+    }
+
+    public async Task AttachDeliveryPaymentPreferenceAsync(
+        Guid restaurantId,
+        Guid orderId,
+        string preferenceId,
+        string checkoutUrl)
+    {
+        var order = await _db.Orders.FirstOrDefaultAsync(item =>
+                item.RestaurantId == restaurantId &&
+                item.Id == orderId &&
+                item.Type == OrderType.DELIVERY)
+            ?? throw new InvalidOperationException("Pedido delivery nao encontrado para pagamento.");
+
+        order.PaymentProvider = "MercadoPago";
+        order.PaymentPreferenceId = preferenceId.Trim();
+        order.PaymentCheckoutUrl = checkoutUrl.Trim();
+        order.PaymentStatus = PaymentStatus.AGUARDANDO_PAGAMENTO;
+        order.PaymentUpdatedAt = DateTimeOffset.UtcNow;
+        order.UpdatedAt = DateTimeOffset.UtcNow;
+        await _db.SaveChangesAsync();
+    }
+
+    public async Task<bool> UpdateDeliveryPaymentStatusAsync(
+        Guid restaurantId,
+        Guid orderId,
+        PaymentStatus paymentStatus,
+        string paymentId,
+        string providerStatus,
+        string? providerStatusDetail,
+        DateTimeOffset? paymentCreatedAt,
+        DateTimeOffset? paymentUpdatedAt,
+        DateTimeOffset? paidAt,
+        CancellationToken cancellationToken = default)
+    {
+        var order = await _db.Orders.FirstOrDefaultAsync(item =>
+            item.RestaurantId == restaurantId &&
+            item.Id == orderId &&
+            item.Type == OrderType.DELIVERY,
+            cancellationToken);
+
+        if (order is null)
+        {
+            return false;
+        }
+
+        order.PaymentProvider = "MercadoPago";
+        order.PaymentId = paymentId.Trim();
+        order.PaymentProviderStatus = providerStatus.Trim();
+        order.PaymentProviderStatusDetail = string.IsNullOrWhiteSpace(providerStatusDetail)
+            ? null
+            : providerStatusDetail.Trim();
+        order.PaymentStatus = paymentStatus;
+        order.PaymentCreatedAt = paymentCreatedAt;
+        order.PaymentUpdatedAt = paymentUpdatedAt ?? DateTimeOffset.UtcNow;
+        order.PaidAt = paymentStatus == PaymentStatus.PAGAMENTO_APROVADO
+            ? paidAt ?? DateTimeOffset.UtcNow
+            : null;
+        order.UpdatedAt = DateTimeOffset.UtcNow;
+
+        await _db.SaveChangesAsync(cancellationToken);
+        return true;
     }
 
     private async Task<Restaurant> RequireRestaurantAsync(Guid restaurantId)
@@ -1400,6 +1470,9 @@ public sealed class RestaurantService
         {
             Id = order.Id,
             Status = order.Status,
+            PaymentStatus = order.PaymentStatus,
+            PaymentStatusLabel = PaymentStatusLabel(order.PaymentStatus),
+            CanUpdateOperationalStatus = order.PaymentStatus is PaymentStatus.PAGAMENTO_APROVADO or PaymentStatus.NAO_APLICAVEL,
             CreatedAt = order.CreatedAt,
             AcknowledgedAt = order.AcknowledgedAt,
             ResolvedAt = order.ResolvedAt,
@@ -1550,6 +1623,17 @@ public sealed class RestaurantService
             OperationalEventStatus.EM_ATENDIMENTO => "Atendendo",
             OperationalEventStatus.RESOLVIDO => "Resolvido",
             _ => "Pendente"
+        };
+    }
+
+    private static string PaymentStatusLabel(PaymentStatus status)
+    {
+        return status switch
+        {
+            PaymentStatus.AGUARDANDO_PAGAMENTO => "Aguardando pagamento",
+            PaymentStatus.PAGAMENTO_APROVADO => "Pagamento aprovado",
+            PaymentStatus.PAGAMENTO_NEGADO => "Pagamento negado",
+            _ => "Sem pagamento online"
         };
     }
 

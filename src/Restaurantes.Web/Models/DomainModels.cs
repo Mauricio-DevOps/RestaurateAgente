@@ -28,6 +28,14 @@ public enum OperationalEventStatus
     RESOLVIDO
 }
 
+public enum PaymentStatus
+{
+    NAO_APLICAVEL,
+    AGUARDANDO_PAGAMENTO,
+    PAGAMENTO_APROVADO,
+    PAGAMENTO_NEGADO
+}
+
 public enum ServiceRequestType
 {
     CHAMAR_GARCOM,
@@ -80,6 +88,36 @@ public sealed class Restaurant
     public ICollection<RestaurantTable> Tables { get; set; } = [];
     public ICollection<DiscountCoupon> DiscountCoupons { get; set; } = [];
     public ICollection<OrderFeedback> Feedbacks { get; set; } = [];
+    public RestaurantPaymentSettings? PaymentSettings { get; set; }
+}
+
+public sealed class RestaurantPaymentSettings
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid RestaurantId { get; set; }
+    public Restaurant? Restaurant { get; set; }
+    public string Provider { get; set; } = "MercadoPago";
+    public string ProtectedAccessToken { get; set; } = "";
+    public string ProtectedWebhookSecret { get; set; } = "";
+    public string? MercadoPagoUserId { get; set; }
+    public bool IsEnabled { get; set; }
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
+public sealed class PaymentWebhookEvent
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid RestaurantId { get; set; }
+    public Restaurant? Restaurant { get; set; }
+    public string Provider { get; set; } = "MercadoPago";
+    public string EventId { get; set; } = "";
+    public string? ResourceId { get; set; }
+    public string? Action { get; set; }
+    public string? PaymentStatus { get; set; }
+    public string? RequestId { get; set; }
+    public string PayloadJson { get; set; } = "";
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
 
 public sealed class Cliente
@@ -210,6 +248,16 @@ public sealed class Order
     public string? CouponTypeSnapshot { get; set; }
     public decimal? CouponValueSnapshot { get; set; }
     public int TotalCents { get; set; }
+    public PaymentStatus PaymentStatus { get; set; } = PaymentStatus.NAO_APLICAVEL;
+    public string? PaymentProvider { get; set; }
+    public string? PaymentPreferenceId { get; set; }
+    public string? PaymentCheckoutUrl { get; set; }
+    public string? PaymentId { get; set; }
+    public string? PaymentProviderStatus { get; set; }
+    public string? PaymentProviderStatusDetail { get; set; }
+    public DateTimeOffset? PaymentCreatedAt { get; set; }
+    public DateTimeOffset? PaymentUpdatedAt { get; set; }
+    public DateTimeOffset? PaidAt { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset? AcknowledgedAt { get; set; }
     public DateTimeOffset? ResolvedAt { get; set; }

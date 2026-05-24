@@ -9,10 +9,14 @@ namespace Restaurantes.Web.Controllers;
 public sealed class ApiPublicRestaurantsController : ControllerBase
 {
     private readonly RestaurantService _restaurantService;
+    private readonly PublicOrderPaymentService _publicOrderPaymentService;
 
-    public ApiPublicRestaurantsController(RestaurantService restaurantService)
+    public ApiPublicRestaurantsController(
+        RestaurantService restaurantService,
+        PublicOrderPaymentService publicOrderPaymentService)
     {
         _restaurantService = restaurantService;
+        _publicOrderPaymentService = publicOrderPaymentService;
     }
 
     [HttpGet("table-session")]
@@ -34,7 +38,7 @@ public sealed class ApiPublicRestaurantsController : ControllerBase
 
         try
         {
-            var result = await _restaurantService.SubmitPublicOrderAsync(input);
+            var result = await _publicOrderPaymentService.SubmitPublicOrderAsync(input, HttpContext.RequestAborted);
             return Ok(new { message = "Pedido enviado.", data = result });
         }
         catch (InvalidOperationException error)

@@ -465,6 +465,46 @@ namespace Restaurantes.Web.Data.Migrations
                     b.Property<Guid?>("HandledByWaiterId")
                         .HasColumnType("TEXT");
 
+                    b.Property<DateTimeOffset?>("PaidAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PaymentCheckoutUrl")
+                        .HasMaxLength(1024)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset?>("PaymentCreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PaymentId")
+                        .HasMaxLength(160)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PaymentPreferenceId")
+                        .HasMaxLength(160)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PaymentProvider")
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PaymentProviderStatus")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PaymentProviderStatusDetail")
+                        .HasMaxLength(160)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PaymentStatus")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT")
+                        .HasDefaultValue("NAO_APLICAVEL");
+
+                    b.Property<DateTimeOffset?>("PaymentUpdatedAt")
+                        .HasColumnType("TEXT");
+
                     b.Property<DateTimeOffset?>("ResolvedAt")
                         .HasColumnType("TEXT");
 
@@ -511,6 +551,8 @@ namespace Restaurantes.Web.Data.Migrations
                     b.HasIndex("RestaurantId", "CreatedAt");
 
                     b.HasIndex("RestaurantId", "DiscountCouponId");
+
+                    b.HasIndex("RestaurantId", "PaymentStatus", "CreatedAt");
 
                     b.HasIndex("RestaurantId", "Type", "Status", "CreatedAt");
 
@@ -589,6 +631,58 @@ namespace Restaurantes.Web.Data.Migrations
                     b.HasIndex("OrderId");
 
                     b.ToTable("RestaurantOrderItems");
+                });
+
+            modelBuilder.Entity("Restaurantes.Web.Models.PaymentWebhookEvent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Action")
+                        .HasMaxLength(80)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("EventId")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PaymentStatus")
+                        .HasMaxLength(40)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PayloadJson")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Provider")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("RequestId")
+                        .HasMaxLength(160)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ResourceId")
+                        .HasMaxLength(160)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("RestaurantId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Provider", "EventId")
+                        .IsUnique();
+
+                    b.HasIndex("RestaurantId", "CreatedAt");
+
+                    b.ToTable("PaymentWebhookEvents");
                 });
 
             modelBuilder.Entity("Restaurantes.Web.Models.Restaurant", b =>
@@ -676,6 +770,54 @@ namespace Restaurantes.Web.Data.Migrations
                         .IsUnique();
 
                     b.ToTable("Restaurants");
+                });
+
+            modelBuilder.Entity("Restaurantes.Web.Models.RestaurantPaymentSettings", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsEnabled")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("MercadoPagoUserId")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ProtectedAccessToken")
+                        .IsRequired()
+                        .HasMaxLength(2048)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ProtectedWebhookSecret")
+                        .IsRequired()
+                        .HasMaxLength(2048)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Provider")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("RestaurantId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RestaurantId")
+                        .IsUnique();
+
+                    b.HasIndex("RestaurantId", "Provider")
+                        .IsUnique();
+
+                    b.ToTable("RestaurantPaymentSettings");
                 });
 
             modelBuilder.Entity("Restaurantes.Web.Models.RestaurantTab", b =>
@@ -1029,6 +1171,28 @@ namespace Restaurantes.Web.Data.Migrations
                     b.Navigation("Order");
                 });
 
+            modelBuilder.Entity("Restaurantes.Web.Models.PaymentWebhookEvent", b =>
+                {
+                    b.HasOne("Restaurantes.Web.Models.Restaurant", "Restaurant")
+                        .WithMany()
+                        .HasForeignKey("RestaurantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Restaurant");
+                });
+
+            modelBuilder.Entity("Restaurantes.Web.Models.RestaurantPaymentSettings", b =>
+                {
+                    b.HasOne("Restaurantes.Web.Models.Restaurant", "Restaurant")
+                        .WithOne("PaymentSettings")
+                        .HasForeignKey("Restaurantes.Web.Models.RestaurantPaymentSettings", "RestaurantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Restaurant");
+                });
+
             modelBuilder.Entity("Restaurantes.Web.Models.RestaurantTab", b =>
                 {
                     b.HasOne("Restaurantes.Web.Models.Restaurant", "Restaurant")
@@ -1141,6 +1305,8 @@ namespace Restaurantes.Web.Data.Migrations
                     b.Navigation("DiscountCoupons");
 
                     b.Navigation("Feedbacks");
+
+                    b.Navigation("PaymentSettings");
 
                     b.Navigation("Tables");
 
