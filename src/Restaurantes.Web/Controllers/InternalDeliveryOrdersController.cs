@@ -68,6 +68,7 @@ public sealed class InternalDeliveryOrdersController : ControllerBase
                 {
                     RestaurantId = restaurant.Id,
                     CustomerName = FirstNonEmpty(request.CustomerName, "Cliente WhatsApp"),
+                    CustomerEmail = request.CustomerEmail,
                     CustomerPhone = request.PhoneNumber,
                     DeliveryAddress = request.DeliveryAddress,
                     Items = orderItems

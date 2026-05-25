@@ -41,7 +41,7 @@ public sealed class PublicOrderPaymentService
             ?? throw new InvalidOperationException("Pagamento online nao configurado para este restaurante.");
 
         var result = await _restaurantService.SubmitPublicOrderAsync(input);
-        return await CreatePaymentPreferenceAsync(input.RestaurantId, result, credential, cancellationToken);
+        return await CreatePaymentPreferenceAsync(input.RestaurantId, result, credential, null, cancellationToken);
     }
 
     public async Task<PublicOrderSubmissionResult> SubmitWhatsAppDeliveryOrderAsync(
@@ -54,13 +54,14 @@ public sealed class PublicOrderPaymentService
             ?? throw new InvalidOperationException("Pagamento online nao configurado para este restaurante.");
 
         var result = await _restaurantService.SubmitWhatsAppDeliveryOrderAsync(input);
-        return await CreatePaymentPreferenceAsync(input.RestaurantId, result, credential, cancellationToken);
+        return await CreatePaymentPreferenceAsync(input.RestaurantId, result, credential, input.CustomerEmail, cancellationToken);
     }
 
     private async Task<PublicOrderSubmissionResult> CreatePaymentPreferenceAsync(
         Guid restaurantId,
         PublicOrderSubmissionResult result,
         RestaurantPaymentCredential credential,
+        string? payerEmail,
         CancellationToken cancellationToken)
     {
         if (result.TotalCents <= 0)
@@ -70,7 +71,7 @@ public sealed class PublicOrderPaymentService
 
         var preference = await _mercadoPagoClient.CreatePreferenceAsync(
             credential.AccessToken,
-            BuildPreferenceRequest(restaurantId, result),
+            BuildPreferenceRequest(restaurantId, result, payerEmail),
             cancellationToken);
         var checkoutUrl = ResolveCheckoutUrl(preference);
 
@@ -87,7 +88,8 @@ public sealed class PublicOrderPaymentService
 
     private MercadoPagoPreferenceCreateRequest BuildPreferenceRequest(
         Guid restaurantId,
-        PublicOrderSubmissionResult result)
+        PublicOrderSubmissionResult result,
+        string? payerEmail)
     {
         var orderId = result.OrderId.ToString("D");
         var notificationUrl = _externalUrlResolver.BuildMercadoPagoCallbackUrl(
@@ -109,7 +111,8 @@ public sealed class PublicOrderPaymentService
                     result.TotalCents / 100m)
             ],
             Payer: new MercadoPagoPreferencePayerRequest(
-                result.CustomerName,
+                Name: result.CustomerName,
+                Email: NormalizeEmail(payerEmail),
                 Phone: new MercadoPagoPhoneRequest(null, NormalizeDigits(result.CustomerPhone)),
                 Address: new MercadoPagoAddressRequest(result.DeliveryAddress)),
             ExternalReference: orderId,
@@ -146,6 +149,17 @@ public sealed class PublicOrderPaymentService
 
         var digits = new string(value.Where(char.IsDigit).ToArray());
         return string.IsNullOrWhiteSpace(digits) ? null : digits;
+    }
+
+    private static string? NormalizeEmail(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        var trimmed = value.Trim();
+        return trimmed.Contains('@', StringComparison.Ordinal) ? trimmed : null;
     }
 
     private static string? FirstNonEmpty(params string?[] values)

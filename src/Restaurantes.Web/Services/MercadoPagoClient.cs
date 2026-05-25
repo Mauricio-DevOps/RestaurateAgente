@@ -174,6 +174,7 @@ public sealed record MercadoPagoPreferenceItemRequest(
 
 public sealed record MercadoPagoPreferencePayerRequest(
     string? Name,
+    string? Email,
     MercadoPagoPhoneRequest? Phone,
     MercadoPagoAddressRequest? Address);
 

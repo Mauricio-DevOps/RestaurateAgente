@@ -61,6 +61,25 @@ public sealed class PaymentFlowTests
     }
 
     [Fact]
+    public async Task WhatsAppDeliveryOrder_WithCustomerEmail_SendsPayerEmailToPreference()
+    {
+        await using var fixture = await PaymentFixture.CreateAsync();
+        await fixture.SaveMercadoPagoSettingsAsync("token-restaurante", "secret-restaurante");
+
+        await fixture.PaymentService.SubmitWhatsAppDeliveryOrderAsync(new WhatsAppDeliveryOrderSubmissionInput
+        {
+            RestaurantId = fixture.Restaurant.Id,
+            CustomerName = "Maria",
+            CustomerEmail = " maria.teste@example.com ",
+            CustomerPhone = "11999999999",
+            DeliveryAddress = "Rua Um, 123",
+            Items = [new WhatsAppDeliveryOrderItemInput { ProductId = "prod-risoto", Quantity = 1 }]
+        }, CancellationToken.None);
+
+        Assert.Equal("maria.teste@example.com", fixture.MercadoPagoClient.LastPreferenceRequest?.Payer?.Email);
+    }
+
+    [Fact]
     public async Task TableOrder_DoesNotRequirePaymentToken()
     {
         await using var fixture = await PaymentFixture.CreateAsync();
@@ -203,7 +222,8 @@ public sealed class PaymentFlowTests
                 CategoryId = category.Id,
                 Name = "Risoto",
                 Description = "Teste",
-                PriceCents = 4200
+                PriceCents = 4200,
+                WhatsAppProductId = "prod-risoto"
             };
             db.Restaurants.Add(restaurant);
             db.RestaurantTables.Add(table);

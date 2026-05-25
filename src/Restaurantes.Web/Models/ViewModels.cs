@@ -404,6 +404,7 @@ public sealed class WhatsAppDeliveryOrderSubmissionInput
 {
     public Guid RestaurantId { get; set; }
     public string? CustomerName { get; set; }
+    public string? CustomerEmail { get; set; }
     public string? CustomerPhone { get; set; }
     public string? DeliveryAddress { get; set; }
     public List<WhatsAppDeliveryOrderItemInput> Items { get; set; } = [];
@@ -421,6 +422,7 @@ public sealed class WhatsAppDeliveryPaymentRequest
     public string? SourceOrderId { get; set; }
     public string? PhoneNumber { get; set; }
     public string? CustomerName { get; set; }
+    public string? CustomerEmail { get; set; }
     public string? DeliveryAddress { get; set; }
     public List<WhatsAppDeliveryPaymentItemRequest> Items { get; set; } = [];
 }
