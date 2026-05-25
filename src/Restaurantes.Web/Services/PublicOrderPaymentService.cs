@@ -41,6 +41,28 @@ public sealed class PublicOrderPaymentService
             ?? throw new InvalidOperationException("Pagamento online nao configurado para este restaurante.");
 
         var result = await _restaurantService.SubmitPublicOrderAsync(input);
+        return await CreatePaymentPreferenceAsync(input.RestaurantId, result, credential, cancellationToken);
+    }
+
+    public async Task<PublicOrderSubmissionResult> SubmitWhatsAppDeliveryOrderAsync(
+        WhatsAppDeliveryOrderSubmissionInput input,
+        CancellationToken cancellationToken)
+    {
+        var credential = await _paymentSettingsService.GetActiveMercadoPagoCredentialAsync(
+            input.RestaurantId,
+            cancellationToken)
+            ?? throw new InvalidOperationException("Pagamento online nao configurado para este restaurante.");
+
+        var result = await _restaurantService.SubmitWhatsAppDeliveryOrderAsync(input);
+        return await CreatePaymentPreferenceAsync(input.RestaurantId, result, credential, cancellationToken);
+    }
+
+    private async Task<PublicOrderSubmissionResult> CreatePaymentPreferenceAsync(
+        Guid restaurantId,
+        PublicOrderSubmissionResult result,
+        RestaurantPaymentCredential credential,
+        CancellationToken cancellationToken)
+    {
         if (result.TotalCents <= 0)
         {
             throw new InvalidOperationException("O total do pedido precisa ser maior que zero para pagamento online.");
@@ -48,12 +70,12 @@ public sealed class PublicOrderPaymentService
 
         var preference = await _mercadoPagoClient.CreatePreferenceAsync(
             credential.AccessToken,
-            BuildPreferenceRequest(input.RestaurantId, result),
+            BuildPreferenceRequest(restaurantId, result),
             cancellationToken);
         var checkoutUrl = ResolveCheckoutUrl(preference);
 
         await _restaurantService.AttachDeliveryPaymentPreferenceAsync(
-            input.RestaurantId,
+            restaurantId,
             result.OrderId,
             preference.Id,
             checkoutUrl);

@@ -683,6 +683,98 @@ public sealed class RestaurantService
         };
     }
 
+    public async Task<PublicOrderSubmissionResult> SubmitWhatsAppDeliveryOrderAsync(WhatsAppDeliveryOrderSubmissionInput input)
+    {
+        var groupedItems = NormalizeWhatsAppOrderItems(input.Items);
+        var deliveryCustomer = NormalizeDeliveryCustomer(new PublicOrderSubmissionInput
+        {
+            RestaurantId = input.RestaurantId,
+            CustomerName = input.CustomerName,
+            CustomerPhone = input.CustomerPhone,
+            DeliveryAddress = input.DeliveryAddress
+        });
+
+        var productIds = groupedItems.Select(item => item.ProductId).ToArray();
+        var linkedMenuItems = await _db.MenuItems
+            .Where(item =>
+                item.RestaurantId == input.RestaurantId &&
+                item.WhatsAppProductId != null &&
+                productIds.Contains(item.WhatsAppProductId))
+            .ToListAsync();
+
+        var duplicatedProductLink = linkedMenuItems
+            .GroupBy(item => item.WhatsAppProductId!, StringComparer.Ordinal)
+            .FirstOrDefault(group => group.Count() > 1);
+        if (duplicatedProductLink is not null)
+        {
+            throw new InvalidOperationException("Um produto do WhatsApp esta vinculado a mais de um item do cardapio.");
+        }
+
+        var menuItemsByProductId = linkedMenuItems.ToDictionary(
+            item => item.WhatsAppProductId!,
+            item => item,
+            StringComparer.Ordinal);
+
+        foreach (var requestedItem in groupedItems)
+        {
+            if (!menuItemsByProductId.TryGetValue(requestedItem.ProductId, out var menuItem) || menuItem is null)
+            {
+                throw new InvalidOperationException("Um ou mais produtos do pedido nao estao vinculados ao cardapio do restaurante.");
+            }
+
+            if (menuItem.Status != EntityStatus.ACTIVE)
+            {
+                throw new InvalidOperationException($"O item \"{menuItem.Name}\" nao esta mais disponivel.");
+            }
+        }
+
+        var subtotalCents = groupedItems.Sum(item => menuItemsByProductId[item.ProductId].PriceCents * item.Quantity);
+        var order = new Order
+        {
+            Type = OrderType.DELIVERY,
+            RestaurantId = input.RestaurantId,
+            CustomerName = deliveryCustomer.Name,
+            CustomerPhone = deliveryCustomer.Phone,
+            DeliveryAddress = deliveryCustomer.Address,
+            SubtotalCents = subtotalCents,
+            DiscountCents = 0,
+            TotalCents = subtotalCents,
+            PaymentStatus = PaymentStatus.AGUARDANDO_PAGAMENTO,
+            PaymentProvider = "MercadoPago"
+        };
+
+        foreach (var requestedItem in groupedItems)
+        {
+            var menuItem = menuItemsByProductId[requestedItem.ProductId];
+            order.Items.Add(new OrderItem
+            {
+                MenuItemId = menuItem.Id,
+                Quantity = requestedItem.Quantity,
+                ItemNameSnapshot = menuItem.Name,
+                ItemPriceCentsSnapshot = menuItem.PriceCents
+            });
+        }
+
+        _db.Orders.Add(order);
+        await _db.SaveChangesAsync();
+
+        return new PublicOrderSubmissionResult
+        {
+            OrderId = order.Id,
+            Type = order.Type.ToString(),
+            CustomerName = order.CustomerName,
+            CustomerPhone = order.CustomerPhone,
+            DeliveryAddress = order.DeliveryAddress,
+            SubtotalCents = subtotalCents,
+            SubtotalLabel = RestaurantText.FormatPrice(subtotalCents),
+            DiscountCents = 0,
+            DiscountLabel = RestaurantText.FormatPrice(0),
+            TotalCents = subtotalCents,
+            TotalLabel = RestaurantText.FormatPrice(subtotalCents),
+            PaymentStatus = order.PaymentStatus
+        };
+    }
+
     public async Task<PublicCouponValidationResponse> ValidatePublicCouponAsync(PublicCouponValidationInput input)
     {
         var groupedItems = NormalizeOrderItems(input.Items);
@@ -1229,6 +1321,27 @@ public sealed class RestaurantService
         if (groupedItems.Count == 0)
         {
             throw new InvalidOperationException("Adicione ao menos um item.");
+        }
+
+        return groupedItems;
+    }
+
+    private static IReadOnlyList<WhatsAppDeliveryOrderItemInput> NormalizeWhatsAppOrderItems(
+        IReadOnlyList<WhatsAppDeliveryOrderItemInput> items)
+    {
+        var groupedItems = items
+            .Where(item => !string.IsNullOrWhiteSpace(item.ProductId) && item.Quantity > 0)
+            .GroupBy(item => item.ProductId.Trim(), StringComparer.Ordinal)
+            .Select(group => new WhatsAppDeliveryOrderItemInput
+            {
+                ProductId = group.Key,
+                Quantity = group.Sum(item => item.Quantity)
+            })
+            .ToList();
+
+        if (groupedItems.Count == 0)
+        {
+            throw new InvalidOperationException("Adicione ao menos um item valido ao pedido.");
         }
 
         return groupedItems;

@@ -55,14 +55,16 @@ public sealed class InternalDeliveryOrdersController : ControllerBase
                     statusCode: StatusCodes.Status404NotFound);
             }
 
-            var orderItems = await BuildPublicOrderItemsAsync(
-                db,
-                restaurant.Id,
-                NormalizeItems(request.Items),
-                cancellationToken);
+            var orderItems = NormalizeItems(request.Items)
+                .Select(item => new WhatsAppDeliveryOrderItemInput
+                {
+                    ProductId = item.ProductId,
+                    Quantity = item.Quantity
+                })
+                .ToList();
 
-            var result = await publicOrderPaymentService.SubmitPublicOrderAsync(
-                new PublicOrderSubmissionInput
+            var result = await publicOrderPaymentService.SubmitWhatsAppDeliveryOrderAsync(
+                new WhatsAppDeliveryOrderSubmissionInput
                 {
                     RestaurantId = restaurant.Id,
                     CustomerName = FirstNonEmpty(request.CustomerName, "Cliente WhatsApp"),
@@ -86,50 +88,6 @@ public sealed class InternalDeliveryOrdersController : ControllerBase
                 detail: error.Message,
                 statusCode: StatusCodes.Status400BadRequest);
         }
-    }
-
-    private static async Task<List<PublicOrderItemInput>> BuildPublicOrderItemsAsync(
-        ApplicationDbContext db,
-        Guid restaurantId,
-        IReadOnlyList<NormalizedWhatsAppOrderItem> requestedItems,
-        CancellationToken cancellationToken)
-    {
-        var productIds = requestedItems.Select(item => item.ProductId).Distinct(StringComparer.Ordinal).ToArray();
-        var menuItems = await db.MenuItems.AsNoTracking()
-            .Where(item =>
-                item.RestaurantId == restaurantId &&
-                item.WhatsAppProductId != null &&
-                productIds.Contains(item.WhatsAppProductId))
-            .ToListAsync(cancellationToken);
-
-        var duplicatedProductLink = menuItems
-            .GroupBy(item => item.WhatsAppProductId!, StringComparer.Ordinal)
-            .FirstOrDefault(group => group.Count() > 1);
-        if (duplicatedProductLink is not null)
-        {
-            throw new InvalidOperationException("Um produto do WhatsApp esta vinculado a mais de um item do cardapio.");
-        }
-
-        var menuItemsByProductId = menuItems.ToDictionary(
-            item => item.WhatsAppProductId!,
-            item => item,
-            StringComparer.Ordinal);
-
-        foreach (var requestedItem in requestedItems)
-        {
-            if (!menuItemsByProductId.TryGetValue(requestedItem.ProductId, out var menuItem) || menuItem is null)
-            {
-                throw new InvalidOperationException("Um ou mais produtos do pedido nao estao vinculados ao cardapio do restaurante.");
-            }
-        }
-
-        return requestedItems
-            .Select(item => new PublicOrderItemInput
-            {
-                MenuItemId = menuItemsByProductId[item.ProductId]!.Id,
-                Quantity = item.Quantity
-            })
-            .ToList();
     }
 
     private static IReadOnlyList<NormalizedWhatsAppOrderItem> NormalizeItems(

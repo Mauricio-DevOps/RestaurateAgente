@@ -400,6 +400,21 @@ public sealed class PublicOrderItemInput
     public int Quantity { get; set; }
 }
 
+public sealed class WhatsAppDeliveryOrderSubmissionInput
+{
+    public Guid RestaurantId { get; set; }
+    public string? CustomerName { get; set; }
+    public string? CustomerPhone { get; set; }
+    public string? DeliveryAddress { get; set; }
+    public List<WhatsAppDeliveryOrderItemInput> Items { get; set; } = [];
+}
+
+public sealed class WhatsAppDeliveryOrderItemInput
+{
+    public string ProductId { get; set; } = "";
+    public int Quantity { get; set; }
+}
+
 public sealed class WhatsAppDeliveryPaymentRequest
 {
     public string? StoreId { get; set; }
