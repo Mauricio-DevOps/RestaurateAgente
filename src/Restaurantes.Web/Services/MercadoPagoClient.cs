@@ -105,7 +105,7 @@ public sealed class MercadoPagoClient : IMercadoPagoClient
     {
         if (!response.IsSuccessStatusCode)
         {
-            throw new InvalidOperationException($"Mercado Pago retornou erro {(int)response.StatusCode}: {body}");
+            throw new MercadoPagoApiException((int)response.StatusCode, body);
         }
     }
 
@@ -128,6 +128,19 @@ public sealed class MercadoPagoClient : IMercadoPagoClient
 }
 
 public sealed record MercadoPagoUserInfo(string Id, string? Nickname);
+
+public sealed class MercadoPagoApiException : Exception
+{
+    public MercadoPagoApiException(int statusCode, string responseBody)
+        : base($"Mercado Pago retornou erro {statusCode}: {responseBody}")
+    {
+        StatusCode = statusCode;
+        ResponseBody = responseBody;
+    }
+
+    public int StatusCode { get; }
+    public string ResponseBody { get; }
+}
 
 public sealed record MercadoPagoPreferenceResult(
     string Id,

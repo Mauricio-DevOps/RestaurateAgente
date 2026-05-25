@@ -59,10 +59,20 @@ public sealed class MercadoPagoWebhookService
             return new MercadoPagoWebhookProcessResult(false, "duplicate");
         }
 
-        var payment = await _mercadoPagoClient.GetPaymentAsync(
-            credential.AccessToken,
-            paymentId,
-            cancellationToken);
+        MercadoPagoPaymentInfo payment;
+        try
+        {
+            payment = await _mercadoPagoClient.GetPaymentAsync(
+                credential.AccessToken,
+                paymentId,
+                cancellationToken);
+        }
+        catch (MercadoPagoApiException error) when (IsPaymentNotFound(error))
+        {
+            await SaveWebhookEventAsync(restaurantId, eventId, paymentId, action, "not_found", xRequestId, payloadJson, cancellationToken);
+            return new MercadoPagoWebhookProcessResult(false, "payment_not_found");
+        }
+
         if (!Guid.TryParse(payment.ExternalReference, out var orderId))
         {
             await SaveWebhookEventAsync(restaurantId, eventId, paymentId, action, payment.Status, xRequestId, payloadJson, cancellationToken);
@@ -179,6 +189,17 @@ public sealed class MercadoPagoWebhookService
             "rejected" or "cancelled" or "refunded" or "charged_back" => PaymentStatus.PAGAMENTO_NEGADO,
             _ => PaymentStatus.AGUARDANDO_PAGAMENTO
         };
+    }
+
+    private static bool IsPaymentNotFound(MercadoPagoApiException error)
+    {
+        if (error.StatusCode == 404)
+        {
+            return true;
+        }
+
+        return error.StatusCode == 400 &&
+            error.ResponseBody.Contains("not_found", StringComparison.OrdinalIgnoreCase);
     }
 
     private static string? ExtractResourceId(JsonElement payload)
