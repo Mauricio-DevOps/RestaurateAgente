@@ -70,6 +70,19 @@ public sealed class RestaurantPaymentSettingsInput
     public string WebhookSecret { get; set; } = "";
 }
 
+public sealed record MercadoPagoStorePaymentSettingsInput(
+    string StoreId,
+    string? AccessToken,
+    string? WebhookSecret);
+
+public sealed record MercadoPagoStorePaymentSettingsStatus(
+    string StoreId,
+    bool IsEnabled,
+    bool HasAccessToken,
+    bool HasWebhookSecret,
+    string? MercadoPagoUserId,
+    string UpdatedAtUtc);
+
 public sealed class RestaurantOverviewView
 {
     public Guid RestaurantId { get; set; }

@@ -80,6 +80,93 @@ public sealed class PaymentFlowTests
     }
 
     [Fact]
+    public async Task SaveMercadoPagoSettingsByStoreId_StoresCredentialsForLinkedRestaurant()
+    {
+        await using var fixture = await PaymentFixture.CreateAsync();
+        fixture.MercadoPagoClient.UserInfo = new MercadoPagoUserInfo("seller-store", "restaurante-teste");
+
+        var status = await fixture.PaymentSettingsService.SaveMercadoPagoSettingsByStoreIdAsync(
+            new MercadoPagoStorePaymentSettingsInput(
+                "11999999999",
+                " token-store ",
+                " secret-store "),
+            CancellationToken.None);
+
+        var credential = await fixture.PaymentSettingsService.GetActiveMercadoPagoCredentialAsync(
+            fixture.Restaurant.Id,
+            CancellationToken.None);
+
+        Assert.Equal("whatsapp:+5511999999999", status.StoreId);
+        Assert.True(status.IsEnabled);
+        Assert.True(status.HasAccessToken);
+        Assert.True(status.HasWebhookSecret);
+        Assert.Equal("seller-store", status.MercadoPagoUserId);
+        Assert.Equal("token-store", credential?.AccessToken);
+        Assert.Equal("secret-store", credential?.WebhookSecret);
+        Assert.DoesNotContain("token-store", status.ToString(), StringComparison.Ordinal);
+        Assert.DoesNotContain("secret-store", status.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task SaveMercadoPagoSettingsByStoreId_PreservesBlankSecretsOnUpdate()
+    {
+        await using var fixture = await PaymentFixture.CreateAsync();
+        await fixture.PaymentSettingsService.SaveMercadoPagoSettingsByStoreIdAsync(
+            new MercadoPagoStorePaymentSettingsInput(
+                "whatsapp:+5511999999999",
+                "token-original",
+                "secret-original"),
+            CancellationToken.None);
+
+        await fixture.PaymentSettingsService.SaveMercadoPagoSettingsByStoreIdAsync(
+            new MercadoPagoStorePaymentSettingsInput(
+                "11999999999",
+                null,
+                "secret-updated"),
+            CancellationToken.None);
+
+        var credential = await fixture.PaymentSettingsService.GetActiveMercadoPagoCredentialAsync(
+            fixture.Restaurant.Id,
+            CancellationToken.None);
+
+        Assert.Equal("token-original", credential?.AccessToken);
+        Assert.Equal("secret-updated", credential?.WebhookSecret);
+    }
+
+    [Fact]
+    public async Task SaveMercadoPagoSettingsByStoreId_RequiresBothSecretsForFirstSave()
+    {
+        await using var fixture = await PaymentFixture.CreateAsync();
+
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            fixture.PaymentSettingsService.SaveMercadoPagoSettingsByStoreIdAsync(
+                new MercadoPagoStorePaymentSettingsInput(
+                    "11999999999",
+                    null,
+                    "secret-only"),
+                CancellationToken.None));
+
+        Assert.Contains("access token", error.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("webhook secret", error.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task GetMercadoPagoSettingsByStoreId_ReturnsStatusWithoutSecrets()
+    {
+        await using var fixture = await PaymentFixture.CreateAsync();
+
+        var status = await fixture.PaymentSettingsService.GetMercadoPagoSettingsByStoreIdAsync(
+            "11999999999",
+            CancellationToken.None);
+
+        Assert.Equal("whatsapp:+5511999999999", status.StoreId);
+        Assert.False(status.IsEnabled);
+        Assert.False(status.HasAccessToken);
+        Assert.False(status.HasWebhookSecret);
+        Assert.Null(status.MercadoPagoUserId);
+    }
+
+    [Fact]
     public async Task TableOrder_DoesNotRequirePaymentToken()
     {
         await using var fixture = await PaymentFixture.CreateAsync();
@@ -213,7 +300,12 @@ public sealed class PaymentFlowTests
             var db = new ApplicationDbContext(options);
             await db.Database.EnsureCreatedAsync();
 
-            var restaurant = new Restaurant { Name = "Teste", Slug = $"teste-{Guid.NewGuid():N}" };
+            var restaurant = new Restaurant
+            {
+                Name = "Teste",
+                Slug = $"teste-{Guid.NewGuid():N}",
+                WhatsAppPhone = "whatsapp:+5511999999999"
+            };
             var table = new RestaurantTable { RestaurantId = restaurant.Id, TableNumber = "1" };
             var category = new MenuCategory { RestaurantId = restaurant.Id, Name = "Pratos" };
             var risoto = new MenuItem
@@ -368,10 +460,11 @@ public sealed class PaymentFlowTests
         public string? LastPreferenceAccessToken { get; private set; }
         public MercadoPagoPreferenceCreateRequest? LastPreferenceRequest { get; private set; }
         public MercadoPagoPaymentInfo? Payment { get; set; }
+        public MercadoPagoUserInfo UserInfo { get; set; } = new("seller-1", "restaurante-teste");
 
         public Task<MercadoPagoUserInfo> GetUserInfoAsync(string accessToken, CancellationToken cancellationToken)
         {
-            return Task.FromResult(new MercadoPagoUserInfo("seller-1", "restaurante-teste"));
+            return Task.FromResult(UserInfo);
         }
 
         public Task<MercadoPagoPreferenceResult> CreatePreferenceAsync(
